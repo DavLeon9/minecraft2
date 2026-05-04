@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minecraft 2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
+    canvas { display: block; }
+
+    /* ── TELA DE LOGIN ─────────────────────────────────────────────── */
+    #login-screen {
+      position: fixed; inset: 0; z-index: 30;
+      background:
+        linear-gradient(180deg,
+          #87ceeb 0%, #87ceeb 55%,
+          #5a9e3c 55%, #5a9e3c 60%,
+          #7a5c3a 60%, #7a5c3a 75%,
+          #555 75%, #555 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+
+    .login-card {
+      background: rgba(10, 10, 10, 0.88);
+      border: 3px solid #4a8a4a;
+      border-top: 5px solid #5a9e3c;
+      border-bottom: 5px solid #3a3a3a;
+      border-radius: 4px;
+      padding: 36px 44px 40px;
+      width: 420px;
+      max-width: 95vw;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.05);
+    }
+
+    .login-title {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 1.35rem;
+      color: #5a9e3c;
+      text-shadow: 3px 3px 0 #1a4a1a, -1px -1px 0 #1a4a1a;
+      letter-spacing: .05em;
+      line-height: 1.5;
+      margin-bottom: 6px;
+    }
+    .login-title span { color: #fff; }
+
+    .login-subtitle {
+      font-size: .7rem;
+      color: #888;
+      margin-bottom: 28px;
+      letter-spacing: .12em;
+    }
+
+    .login-label {
+      display: block;
+      text-align: left;
+      color: #aaa;
+      font-size: .72rem;
+      margin-bottom: 7px;
+      letter-spacing: .08em;
+    }
+
+    #nick-input {
+      width: 100%;
+      padding: 11px 14px;
+      font-size: 1rem;
+      font-family: 'Courier New', monospace;
+      background: #111;
+      border: 2px solid #444;
+      border-radius: 3px;
+      color: #eee;
+      outline: none;
+      transition: border-color .15s;
+      letter-spacing: .05em;
+    }
+    #nick-input:focus  { border-color: #5a9e3c; }
+    #nick-input.error  { border-color: #e53935; }
+    #nick-input.valid  { border-color: #5a9e3c; }
+
+    #nick-error {
+      display: block;
+      min-height: 18px;
+      margin-top: 6px;
+      font-size: .72rem;
+      color: #e53935;
+      text-align: left;
+    }
+
+    #btn-enter {
+      margin-top: 22px;
+      width: 100%;
+      padding: 13px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: .72rem;
+      letter-spacing: .08em;
+      background: #4a7a2a;
+      border: none;
+      border-bottom: 4px solid #2a4a10;
+      border-radius: 3px;
+      color: #fff;
+      cursor: pointer;
+      transition: background .12s, transform .08s;
+    }
+    #btn-enter:hover:not(:disabled) { background: #5a9e3c; }
+    #btn-enter:active:not(:disabled) {
+      transform: translateY(2px);
+      border-bottom-width: 2px;
+    }
+    #btn-enter:disabled {
+      background: #333;
+      border-bottom-color: #222;
+      color: #666;
+      cursor: not-allowed;
+    }
+
+    .login-hint {
+      margin-top: 14px;
+      font-size: .65rem;
+      color: #555;
+      letter-spacing: .06em;
+    }
+
+    /* ── OVERLAY DE PAUSA ──────────────────────────────────────────── */
+    #overlay {
+      position: fixed; inset: 0;
+      background: rgba(0, 0, 0, .78);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      color: #fff;
+      z-index: 10;
+      pointer-events: all;
+    }
+    #overlay h2 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 1.4rem;
+      color: #5a9e3c;
+      text-shadow: 2px 2px 0 #1a4a1a;
+    }
+    #overlay p { font-size: .85rem; opacity: .65; }
+    #btn-play {
+      padding: 12px 36px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: .7rem;
+      letter-spacing: .08em;
+      background: #4a7a2a;
+      border: none;
+      border-bottom: 4px solid #2a4a10;
+      border-radius: 3px;
+      color: #fff;
+      cursor: pointer;
+      display: none;
+    }
+    #btn-play:hover { background: #5a9e3c; }
+
+    /* ── HUD ───────────────────────────────────────────────────────── */
+    #hud {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      color: #fff;
+    }
+
+    /* Crosshair */
+    #crosshair {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    #crosshair::before, #crosshair::after {
+      content: '';
+      position: absolute;
+      background: rgba(255,255,255,.9);
+    }
+    #crosshair::before { width: 2px; height: 20px; left: 50%; top: -10px; }
+    #crosshair::after  { width: 20px; height: 2px; top: 50%;  left: -10px; transform: translateY(-50%); }
+
+    /* Hotbar */
+    #hotbar {
+      position: absolute; bottom: 24px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; gap: 4px;
+    }
+    .slot {
+      width: 48px; height: 48px;
+      border: 2px solid rgba(255,255,255,.35);
+      border-radius: 4px;
+      background: rgba(0,0,0,.45);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 3px;
+      font-size: 9px; opacity: .8;
+      transition: border-color .1s, opacity .1s;
+    }
+    .slot.active { border-color: #fff; opacity: 1; }
+    .slot-swatch { width: 28px; height: 28px; border-radius: 3px; }
+
+    /* Info */
+    #info {
+      position: absolute; top: 8px; left: 8px;
+      font-size: 11px; line-height: 1.7;
+      text-shadow: 1px 1px 0 #000;
+    }
+
+    /* Controls */
+    #controls-hint {
+      position: absolute; bottom: 82px; right: 10px;
+      font-size: 10px; opacity: .45;
+      text-align: right; line-height: 1.8;
+    }
+
+    /* Nick do jogador local (topo) */
+    #info-nick {
+      position: absolute; top: 8px; right: 10px;
+      font-size: 11px; opacity: .7;
+      text-shadow: 1px 1px 0 #000;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── TELA DE LOGIN ──────────────────────────────────────────────────── -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-title">⛏ MINECRAFT <span>2</span></div>
+    <div class="login-subtitle">MUNDO MULTIPLAYER</div>
+
+    <label class="login-label" for="nick-input">O teu nick</label>
+    <input
+      type="text"
+      id="nick-input"
+      placeholder="ex: Steve_123"
+      maxlength="16"
+      autocomplete="off"
+      spellcheck="false"
+    />
+    <span id="nick-error"></span>
+
+    <button id="btn-enter">▶ ENTRAR NO MUNDO</button>
+    <p class="login-hint">2–16 caracteres · letras, números e _</p>
+  </div>
+</div>
+
+<!-- ── OVERLAY DE PAUSA ───────────────────────────────────────────────── -->
+<div id="overlay">
+  <h2>⏸ PAUSADO</h2>
+  <p id="overlay-msg"></p>
+  <button id="btn-play">▶ CONTINUAR</button>
+</div>
+
+<!-- ── HUD ────────────────────────────────────────────────────────────── -->
+<div id="hud">
+  <div id="crosshair"></div>
+
+  <div id="hotbar">
+    <div class="slot active" data-block="1">
+      <div class="slot-swatch" style="background:#5a9e3c"></div>
+      <span>Relva</span>
+    </div>
+    <div class="slot" data-block="2">
+      <div class="slot-swatch" style="background:#7a5c3a"></div>
+      <span>Terra</span>
+    </div>
+    <div class="slot" data-block="3">
+      <div class="slot-swatch" style="background:#828282"></div>
+      <span>Pedra</span>
+    </div>
+    <div class="slot" data-block="4">
+      <div class="slot-swatch" style="background:#c47c3c"></div>
+      <span>Madeira</span>
+    </div>
+  </div>
+
+  <div id="info">
+    <div id="info-pos">x:0  y:0  z:0</div>
+    <div id="info-players">Jogadores: 1</div>
+    <div id="info-fps">FPS: –</div>
+  </div>
+  <div id="info-nick"></div>
+
+  <div id="controls-hint">
+    WASD · mover<br>
+    Espaço · saltar<br>
+    LMB · quebrar<br>
+    RMB · colocar<br>
+    1-4 / scroll · bloco<br>
+    Esc · pausa
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three":          "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/":  "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script src="/socket.io/socket.io.js"></script>
+<script type="module" src="js/main.js"></script>
+
+</body>
+</html>
