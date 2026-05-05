@@ -5,19 +5,26 @@ export const WORLD_HEIGHT = 32;
 
 // ─── Tipos de bloco ───────────────────────────────────────────────────────────
 export const BLOCK = Object.freeze({
-  AIR:   0,
-  GRASS: 1,
-  DIRT:  2,
-  STONE: 3,
-  WOOD:  4,
+  AIR:    0,
+  GRASS:  1,
+  DIRT:   2,
+  STONE:  3,
+  WOOD:   4,   // wood planks
+  LOG:    5,   // oak log
+  LEAVES: 6,
 });
 
-// Cor para cima (top) e para os lados (side) de cada bloco
-export const BLOCK_COLORS = Object.freeze({
-  [BLOCK.GRASS]: { top: 0x5a9e3c, side: 0x7a5c3a },
-  [BLOCK.DIRT]:  { top: 0x7a5c3a, side: 0x7a5c3a },
-  [BLOCK.STONE]: { top: 0x828282, side: 0x767676 },
-  [BLOCK.WOOD]:  { top: 0xc47c3c, side: 0xb87333 },
+/**
+ * Tempo (em segundos) para partir cada tipo de bloco.
+ * Pedra é a mais dura; folhas e terra são as mais fáceis.
+ */
+export const BREAK_TIME = Object.freeze({
+  [BLOCK.GRASS]:  0.7,
+  [BLOCK.DIRT]:   0.7,
+  [BLOCK.STONE]:  2.5,
+  [BLOCK.WOOD]:   0.9,
+  [BLOCK.LOG]:    1.2,
+  [BLOCK.LEAVES]: 0.3,
 });
 
 // ─── Física do jogador ────────────────────────────────────────────────────────

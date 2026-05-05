@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js';
 import { World, WorldRenderer }   from './world.js';
 import { PlayerController }        from './player.js';
 import { Network }                 from './network.js';
@@ -9,7 +9,7 @@ import { PLAYER_EYE_Y }            from './constants.js';
 export class Game {
   constructor() {
     this.renderer      = null;
-    this.labelRenderer = null;   // CSS2DRenderer para nicks flutuantes
+    this.labelRenderer = null;
     this.scene         = null;
     this.camera        = null;
     this.clock         = new THREE.Clock(false);
@@ -20,25 +20,23 @@ export class Game {
     this.player        = null;
     this.localNick     = '';
 
-    // Outros jogadores: Map<socketId, PlayerAvatar>
-    this.avatars       = new Map();
+    this.avatars       = new Map();  // Map<socketId, PlayerAvatar>
 
     this.ready         = false;
     this._frameCount   = 0;
     this._fpsTimer     = 0;
   }
 
-  // ── Inicialização (sem ligar ao servidor ainda) ────────────────────────────
+  // ── Inicialização ─────────────────────────────────────────────────────────
 
   init() {
     this._initRenderer();
     this._initScene();
-    this._registerNetworkHandlers(); // regista handlers ANTES de connect()
+    this._registerNetworkHandlers();
     window.addEventListener('resize', () => this._onResize());
   }
 
   _initRenderer() {
-    // WebGL
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -46,7 +44,6 @@ export class Game {
     this.renderer.shadowMap.type    = THREE.PCFSoftShadowMap;
     document.body.prepend(this.renderer.domElement);
 
-    // CSS2D (nicks flutuantes)
     this.labelRenderer = new CSS2DRenderer();
     this.labelRenderer.setSize(window.innerWidth, window.innerHeight);
     this.labelRenderer.domElement.style.cssText =
@@ -81,7 +78,7 @@ export class Game {
     this.scene.add(fill);
   }
 
-  // ── Handlers de rede (registados antes de connect) ────────────────────────
+  // ── Handlers de rede ──────────────────────────────────────────────────────
 
   _registerNetworkHandlers() {
     const { network } = this;
@@ -98,18 +95,21 @@ export class Game {
       );
       this.player.setSpawn(data.spawnX, data.spawnY, data.spawnZ);
 
-      // Pointer lock — pausa/retoma
-      const btnPlay = document.getElementById('btn-play');
-      btnPlay.style.display = 'block';
+      // ── Pointer lock / pausa ───────────────────────────────────────────────
+      const btnPlay  = document.getElementById('btn-play');
+      const overlay  = document.getElementById('overlay');
+      const pauseMsg = document.getElementById('overlay-msg');
 
+      btnPlay.style.display = 'block';
       btnPlay.addEventListener('click', () => this.player.controls.lock());
 
       this.player.controls.addEventListener('lock', () => {
-        document.getElementById('overlay').style.display = 'none';
+        overlay.style.display = 'none';
       });
+
       this.player.controls.addEventListener('unlock', () => {
-        document.getElementById('overlay').style.display = 'flex';
-        document.getElementById('overlay-msg').textContent = 'Clica para continuar';
+        overlay.style.display   = 'flex';
+        pauseMsg.textContent    = 'Premiste ESC — o jogo está pausado';
       });
 
       this.ready = true;
@@ -133,6 +133,7 @@ export class Game {
     network.on('player:move', ({ id, x, y, z, rotY, moving }) => {
       const avatar = this.avatars.get(id);
       if (!avatar) return;
+      // y do servidor é eye height; avatar precisa de feet height
       avatar.update(x, y - PLAYER_EYE_Y, z, rotY, moving);
     });
 
@@ -142,28 +143,22 @@ export class Game {
     });
 
     network.on('disconnect', () => {
-      document.getElementById('overlay').style.display = 'flex';
-      document.getElementById('overlay-msg').textContent =
-        'Desconectado. Recarrega a página.';
-      document.getElementById('btn-play').style.display = 'none';
+      const overlay = document.getElementById('overlay');
+      overlay.style.display = 'flex';
+      document.getElementById('overlay-msg').textContent = 'Desconectado. Recarrega a página.';
+      document.getElementById('btn-play').style.display  = 'none';
     });
   }
 
   // ── Login ─────────────────────────────────────────────────────────────────
 
-  /**
-   * Chamado pelo main.js quando o utilizador submete o nick.
-   * Liga ao servidor e aguarda confirmação.
-   */
   async login(nick) {
     this.localNick = nick;
     localStorage.setItem('mc2_nick', nick);
     document.getElementById('info-nick').textContent = `👤 ${nick}`;
-
-    await this.network.connect(nick); // pode lançar Error se nick duplicado
+    await this.network.connect(nick);
   }
 
-  /** Arranca o loop de renderização (chamado após login bem-sucedido). */
   start() {
     this.clock.start();
     this._loop();
@@ -192,11 +187,6 @@ export class Game {
 
   // ── Game loop ─────────────────────────────────────────────────────────────
 
-  start() {
-    this.clock.start();
-    this._loop();
-  }
-
   _loop() {
     requestAnimationFrame(() => this._loop());
 
@@ -204,14 +194,9 @@ export class Game {
 
     if (this.ready && this.player) {
       this.player.update(dt);
-
-      // Animação dos avatares remotos
-      for (const avatar of this.avatars.values()) {
-        avatar.animate(dt);
-      }
+      for (const avatar of this.avatars.values()) avatar.animate(dt);
     }
 
-    // FPS
     this._frameCount++;
     this._fpsTimer += dt;
     if (this._fpsTimer >= 1.0) {

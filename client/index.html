@@ -24,7 +24,6 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 0;
     }
 
     .login-card {
@@ -109,28 +108,15 @@
       transition: background .12s, transform .08s;
     }
     #btn-enter:hover:not(:disabled) { background: #5a9e3c; }
-    #btn-enter:active:not(:disabled) {
-      transform: translateY(2px);
-      border-bottom-width: 2px;
-    }
-    #btn-enter:disabled {
-      background: #333;
-      border-bottom-color: #222;
-      color: #666;
-      cursor: not-allowed;
-    }
-
-    .login-hint {
-      margin-top: 14px;
-      font-size: .65rem;
-      color: #555;
-      letter-spacing: .06em;
-    }
+    #btn-enter:active:not(:disabled) { transform: translateY(2px); border-bottom-width: 2px; }
+    #btn-enter:disabled { background: #333; border-bottom-color: #222; color: #666; cursor: not-allowed; }
+    .login-hint { margin-top: 14px; font-size: .65rem; color: #555; letter-spacing: .06em; }
 
     /* ── OVERLAY DE PAUSA ──────────────────────────────────────────── */
+    /* pointer-events:none → overlay não bloqueia hotbar nem HUD       */
     #overlay {
       position: fixed; inset: 0;
-      background: rgba(0, 0, 0, .78);
+      background: rgba(0, 0, 0, .52);
       display: none;
       flex-direction: column;
       align-items: center;
@@ -138,19 +124,36 @@
       gap: 16px;
       color: #fff;
       z-index: 10;
-      pointer-events: all;
+      pointer-events: none;   /* ← transparente aos cliques */
     }
-    #overlay h2 {
+
+    /* O card de pausa em si é clicável */
+    .pause-card {
+      background: rgba(8, 8, 8, 0.92);
+      border: 3px solid #4a8a4a;
+      border-top: 4px solid #5a9e3c;
+      border-bottom: 4px solid #1a3a10;
+      border-radius: 4px;
+      padding: 28px 48px 32px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      pointer-events: all;    /* ← card é interactivo */
+      box-shadow: 0 6px 28px rgba(0,0,0,.7);
+    }
+    .pause-card h2 {
       font-family: 'Press Start 2P', monospace;
-      font-size: 1.4rem;
+      font-size: 1.1rem;
       color: #5a9e3c;
       text-shadow: 2px 2px 0 #1a4a1a;
     }
-    #overlay p { font-size: .85rem; opacity: .65; }
+    #overlay-msg { font-size: .78rem; opacity: .6; }
     #btn-play {
       padding: 12px 36px;
       font-family: 'Press Start 2P', monospace;
-      font-size: .7rem;
+      font-size: .68rem;
       letter-spacing: .08em;
       background: #4a7a2a;
       border: none;
@@ -179,28 +182,59 @@
       position: absolute;
       background: rgba(255,255,255,.9);
     }
-    #crosshair::before { width: 2px; height: 20px; left: 50%; top: -10px; }
-    #crosshair::after  { width: 20px; height: 2px; top: 50%;  left: -10px; transform: translateY(-50%); }
+    #crosshair::before { width: 2px; height: 22px; left: 50%; top: -11px; }
+    #crosshair::after  { width: 22px; height: 2px; top: 50%;  left: -11px; transform: translateY(-50%); }
 
-    /* Hotbar */
+    /* Barra de progresso de partida de bloco */
+    #break-progress {
+      position: absolute;
+      left: 50%;
+      top: calc(50% + 22px);
+      transform: translateX(-50%);
+      width: 90px;
+      height: 7px;
+      background: rgba(0,0,0,0.65);
+      border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 3px;
+      overflow: hidden;
+      display: none;
+    }
+    #break-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #ff8800, #ffcc00);
+      border-radius: 2px;
+      transition: width 0.04s linear;
+    }
+
+    /* Hotbar — pointer-events:all para ser clicável mesmo pausado */
     #hotbar {
       position: absolute; bottom: 24px; left: 50%;
       transform: translateX(-50%);
       display: flex; gap: 4px;
+      z-index: 15;
+      pointer-events: all;
     }
     .slot {
-      width: 48px; height: 48px;
+      width: 52px; height: 52px;
       border: 2px solid rgba(255,255,255,.35);
       border-radius: 4px;
-      background: rgba(0,0,0,.45);
+      background: rgba(0,0,0,.50);
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
       gap: 3px;
-      font-size: 9px; opacity: .8;
+      font-size: 8px; opacity: .82;
       transition: border-color .1s, opacity .1s;
+      cursor: pointer;
     }
-    .slot.active { border-color: #fff; opacity: 1; }
-    .slot-swatch { width: 28px; height: 28px; border-radius: 3px; }
+    .slot:hover   { opacity: 1; border-color: rgba(255,255,255,.6); }
+    .slot.active  { border-color: #fff; opacity: 1; border-width: 3px; }
+    .slot-swatch  {
+      width: 30px; height: 30px;
+      border-radius: 3px;
+      image-rendering: pixelated;
+    }
+    .slot-label   { font-size: 7.5px; color: #ddd; text-shadow: 1px 1px 0 #000; }
 
     /* Info */
     #info {
@@ -211,12 +245,12 @@
 
     /* Controls */
     #controls-hint {
-      position: absolute; bottom: 82px; right: 10px;
-      font-size: 10px; opacity: .45;
+      position: absolute; bottom: 86px; right: 10px;
+      font-size: 10px; opacity: .42;
       text-align: right; line-height: 1.8;
     }
 
-    /* Nick do jogador local (topo) */
+    /* Nick local */
     #info-nick {
       position: absolute; top: 8px; right: 10px;
       font-size: 11px; opacity: .7;
@@ -250,31 +284,38 @@
 
 <!-- ── OVERLAY DE PAUSA ───────────────────────────────────────────────── -->
 <div id="overlay">
-  <h2>⏸ PAUSADO</h2>
-  <p id="overlay-msg"></p>
-  <button id="btn-play">▶ CONTINUAR</button>
+  <div class="pause-card">
+    <h2>⏸ PAUSADO</h2>
+    <p id="overlay-msg">Premiste ESC</p>
+    <button id="btn-play">▶ CONTINUAR</button>
+  </div>
 </div>
 
 <!-- ── HUD ────────────────────────────────────────────────────────────── -->
 <div id="hud">
   <div id="crosshair"></div>
+  <div id="break-progress"><div id="break-fill"></div></div>
 
   <div id="hotbar">
     <div class="slot active" data-block="1">
-      <div class="slot-swatch" style="background:#5a9e3c"></div>
-      <span>Relva</span>
+      <div class="slot-swatch" style="background:linear-gradient(180deg,#6db340 30%,#7a5c3a 30%)"></div>
+      <span class="slot-label">Relva [1]</span>
     </div>
     <div class="slot" data-block="2">
-      <div class="slot-swatch" style="background:#7a5c3a"></div>
-      <span>Terra</span>
+      <div class="slot-swatch" style="background:#7a5230"></div>
+      <span class="slot-label">Terra [2]</span>
     </div>
     <div class="slot" data-block="3">
-      <div class="slot-swatch" style="background:#828282"></div>
-      <span>Pedra</span>
+      <div class="slot-swatch" style="background:#9a9a9a"></div>
+      <span class="slot-label">Pedra [3]</span>
     </div>
     <div class="slot" data-block="4">
-      <div class="slot-swatch" style="background:#c47c3c"></div>
-      <span>Madeira</span>
+      <div class="slot-swatch" style="background:repeating-linear-gradient(180deg,#ac7828 0,#ac7828 3px,#6e4818 3px,#6e4818 4px)"></div>
+      <span class="slot-label">Madeira [4]</span>
+    </div>
+    <div class="slot" data-block="5">
+      <div class="slot-swatch" style="background:radial-gradient(circle,#7a4a28 30%,#5c3a1a 30%,#5c3a1a 60%,#8c5c36 60%)"></div>
+      <span class="slot-label">Tronco [5]</span>
     </div>
   </div>
 
@@ -288,9 +329,9 @@
   <div id="controls-hint">
     WASD · mover<br>
     Espaço · saltar<br>
-    LMB · quebrar<br>
+    LMB (segurar) · partir<br>
     RMB · colocar<br>
-    1-4 / scroll · bloco<br>
+    1-5 / scroll · bloco<br>
     Esc · pausa
   </div>
 </div>

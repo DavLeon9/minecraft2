@@ -1,16 +1,13 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import {
+  BLOCK, BREAK_TIME,
   PLAYER_HEIGHT, PLAYER_EYE_Y, PLAYER_WIDTH,
   GRAVITY, JUMP_FORCE, MOVE_SPEED,
-  REACH_DISTANCE, MOVE_SEND_RATE, BLOCK,
+  REACH_DISTANCE, MOVE_SEND_RATE,
 } from './constants.js';
 
 // ─── Raio DDA (voxel traversal) ───────────────────────────────────────────────
-/**
- * Percorre o raio da câmara bloco a bloco (passos pequenos).
- * Devolve { hit: {x,y,z}, prev: {x,y,z} } ou null se não bater em nada.
- */
 function castRay(camera, world) {
   const origin = new THREE.Vector3();
   const dir    = new THREE.Vector3();
@@ -35,20 +32,12 @@ function castRay(camera, world) {
 
 // ─── PlayerController ─────────────────────────────────────────────────────────
 export class PlayerController {
-  /**
-   * @param {THREE.PerspectiveCamera} camera
-   * @param {THREE.Scene}  scene
-   * @param {World}        world   - instância de World (client/js/world.js)
-   * @param {Network}      network - instância de Network
-   * @param {Function}     onRebuild - callback chamado após quebrar/colocar bloco
-   */
   constructor(camera, scene, world, network, onRebuild) {
     this.camera    = camera;
     this.world     = world;
     this.network   = network;
     this.onRebuild = onRebuild;
 
-    // PointerLockControls (r160): getObject() devolve a própria câmara
     this.controls = new PointerLockControls(camera, document.body);
     scene.add(this.controls.getObject());
 
@@ -58,27 +47,29 @@ export class PlayerController {
 
     // Input
     this.keys          = {};
-    this.selectedBlock = BLOCK.GRASS;  // bloco activo na hotbar
+    this.selectedBlock = BLOCK.GRASS;
     this._moveSendTimer = 0;
 
-    // Vectores reutilizáveis (evita GC pressure)
+    // Vectores reutilizáveis
     this._fwd   = new THREE.Vector3();
     this._right = new THREE.Vector3();
+
+    // ── Estado de quebrar bloco ──────────────────────────────────────────────
+    this._breakMouse   = false;   // botão esquerdo pressionado
+    this._breaking     = null;    // { x, y, z, elapsed, total }
 
     this._setupInput();
   }
 
-  // ── API pública ───────────────────────────────────────────────────────────────
+  // ── API pública ───────────────────────────────────────────────────────────
 
-  get position()  { return this.camera.position; }
+  get position() { return this.camera.position; }
   get isLocked()  { return this.controls.isLocked; }
 
-  /** Posiciona o jogador (pés). Câmara é o ponto dos olhos. */
   setSpawn(x, y, z) {
     this.camera.position.set(x, y + PLAYER_EYE_Y, z);
   }
 
-  /** Chamado a cada frame; delta em segundos. */
   update(dt) {
     if (!this.controls.isLocked) return;
 
@@ -87,34 +78,38 @@ export class PlayerController {
     this._moveAndCollide(dt);
     this._broadcastPosition(dt);
     this._updateHUD();
+    this._updateBreaking(dt);
   }
 
-  // ── Input ─────────────────────────────────────────────────────────────────────
+  // ── Input ─────────────────────────────────────────────────────────────────
 
   _setupInput() {
     window.addEventListener('keydown', e => {
       this.keys[e.code] = true;
-
-      // Hotbar 1–4
       const n = parseInt(e.key);
-      if (n >= 1 && n <= 4) this._selectBlock(n);
+      if (n >= 1 && n <= 5) this._selectBlock(n);
     });
     window.addEventListener('keyup', e => { this.keys[e.code] = false; });
 
-    // Scroll para mudar de bloco
+    // Scroll para mudar de bloco (1–5)
     window.addEventListener('wheel', e => {
       let b = this.selectedBlock + (e.deltaY > 0 ? 1 : -1);
-      if (b < 1) b = 4;
-      if (b > 4) b = 1;
+      if (b < 1) b = 5;
+      if (b > 5) b = 1;
       this._selectBlock(b);
     }, { passive: true });
 
-    // Cliques de rato
+    // Botão esquerdo: começar a partir
     window.addEventListener('mousedown', e => {
       if (!this.controls.isLocked) return;
       e.preventDefault();
-      if (e.button === 0) this._breakBlock();
+      if (e.button === 0) { this._breakMouse = true;  this._tryStartBreaking(); }
       if (e.button === 2) this._placeBlock();
+    });
+
+    // Soltar botão esquerdo: cancelar partida
+    window.addEventListener('mouseup', e => {
+      if (e.button === 0) { this._breakMouse = false; this._cancelBreaking(); }
     });
 
     window.addEventListener('contextmenu', e => e.preventDefault());
@@ -127,19 +122,16 @@ export class PlayerController {
     });
   }
 
-  // ── Física ────────────────────────────────────────────────────────────────────
+  // ── Física ────────────────────────────────────────────────────────────────
 
   _applyGravity(dt) {
     this.vel.y -= GRAVITY * dt;
   }
 
   _applyMovement(dt) {
-    // Direcção de olhar no plano XZ (sem pitch)
     this.camera.getWorldDirection(this._fwd);
     this._fwd.y = 0;
     if (this._fwd.lengthSq() > 0.0001) this._fwd.normalize();
-
-    // Eixo direita = forward × up
     this._right.crossVectors(this._fwd, new THREE.Vector3(0, 1, 0));
 
     let fx = 0, fz = 0;
@@ -151,28 +143,18 @@ export class PlayerController {
     this.vel.x = (this._fwd.x * fz + this._right.x * fx) * MOVE_SPEED;
     this.vel.z = (this._fwd.z * fz + this._right.z * fx) * MOVE_SPEED;
 
-    // Salto
     if ((this.keys['Space'] || this.keys['KeyE']) && this.onGround) {
       this.vel.y    = JUMP_FORCE;
       this.onGround = false;
     }
   }
 
-  /**
-   * Move o jogador eixo a eixo e resolve colisões AABB vs grelha de blocos.
-   * A separação por eixo impede que o jogador "cole" em cantos.
-   */
   _moveAndCollide(dt) {
     const pos = this.position;
 
-    // ── X ──
     pos.x += this.vel.x * dt;
-    if (this._collidesWorld()) {
-      pos.x -= this.vel.x * dt;
-      this.vel.x = 0;
-    }
+    if (this._collidesWorld()) { pos.x -= this.vel.x * dt; this.vel.x = 0; }
 
-    // ── Y ──
     pos.y += this.vel.y * dt;
     if (this._collidesWorld()) {
       if (this.vel.y < 0) this.onGround = true;
@@ -182,64 +164,116 @@ export class PlayerController {
       this.onGround = false;
     }
 
-    // ── Z ──
     pos.z += this.vel.z * dt;
-    if (this._collidesWorld()) {
-      pos.z -= this.vel.z * dt;
-      this.vel.z = 0;
-    }
+    if (this._collidesWorld()) { pos.z -= this.vel.z * dt; this.vel.z = 0; }
   }
 
-  /**
-   * Testa se a AABB actual do jogador intersecta algum bloco sólido.
-   * AABB: centro = posição da câmara,
-   *       extents = PLAYER_WIDTH/2 em X e Z,
-   *       [pos.y - PLAYER_EYE_Y, pos.y - PLAYER_EYE_Y + PLAYER_HEIGHT] em Y.
-   */
   _collidesWorld() {
     const pos   = this.position;
     const r     = PLAYER_WIDTH / 2;
     const feetY = pos.y - PLAYER_EYE_Y;
     const headY = feetY + PLAYER_HEIGHT;
 
-    const x0 = Math.floor(pos.x   - r);
-    const x1 = Math.floor(pos.x   + r - 0.001);
-    const y0 = Math.floor(feetY);
-    const y1 = Math.floor(headY   - 0.001);
-    const z0 = Math.floor(pos.z   - r);
-    const z1 = Math.floor(pos.z   + r - 0.001);
+    const x0 = Math.floor(pos.x - r),       x1 = Math.floor(pos.x + r - 0.001);
+    const y0 = Math.floor(feetY),            y1 = Math.floor(headY - 0.001);
+    const z0 = Math.floor(pos.z - r),        z1 = Math.floor(pos.z + r - 0.001);
 
     for (let bx = x0; bx <= x1; bx++)
       for (let by = y0; by <= y1; by++)
         for (let bz = z0; bz <= z1; bz++)
           if (this.world.isSolid(bx, by, bz)) return true;
-
     return false;
   }
 
-  // ── Interacção com blocos ─────────────────────────────────────────────────────
+  // ── Interacção com blocos ─────────────────────────────────────────────────
 
-  _breakBlock() {
+  /**
+   * Começa a partir o bloco que o raio toca.
+   * Se já estava a partir o mesmo bloco, não faz nada (continua).
+   */
+  _tryStartBreaking() {
     const ray = castRay(this.camera, this.world);
-    if (!ray) return;
+    if (!ray) { this._cancelBreaking(); return; }
+
     const { x, y, z } = ray.hit;
-    this.world.setBlock(x, y, z, BLOCK.AIR);
-    this.network.sendBlockBreak(x, y, z);
-    // Não rebuild aqui — o servidor fará broadcast e o event 'block:update' rebuilda
+
+    // Já a partir este bloco — deixa continuar
+    if (this._breaking &&
+        this._breaking.x === x &&
+        this._breaking.y === y &&
+        this._breaking.z === z) return;
+
+    const type  = this.world.getBlock(x, y, z);
+    const total = BREAK_TIME[type] ?? 1.0;
+    this._breaking = { x, y, z, elapsed: 0, total };
+    this._setBreakProgress(0);
+  }
+
+  _cancelBreaking() {
+    this._breaking = null;
+    this._setBreakProgress(-1);
+  }
+
+  /**
+   * Avança o temporizador de partida a cada frame.
+   * Cancela se o jogador olhar para outro bloco.
+   * Quebra o bloco quando o tempo se esgota.
+   */
+  _updateBreaking(dt) {
+    if (!this._breakMouse || !this._breaking) return;
+
+    // Verifica se ainda está a olhar para o mesmo bloco
+    const ray = castRay(this.camera, this.world);
+    if (!ray ||
+        ray.hit.x !== this._breaking.x ||
+        ray.hit.y !== this._breaking.y ||
+        ray.hit.z !== this._breaking.z) {
+      // Mudou de bloco — reinicia com o novo (ou cancela se não há)
+      this._breaking = null;
+      this._setBreakProgress(-1);
+      if (ray) this._tryStartBreaking();
+      return;
+    }
+
+    this._breaking.elapsed += dt;
+    const progress = Math.min(this._breaking.elapsed / this._breaking.total, 1);
+    this._setBreakProgress(progress);
+
+    if (progress >= 1) {
+      // QUEBRA!
+      const { x, y, z } = this._breaking;
+      this.world.setBlock(x, y, z, BLOCK.AIR);
+      this.network.sendBlockBreak(x, y, z);
+      this._breaking = null;
+      this._setBreakProgress(-1);
+      // Se o botão ainda está pressionado, começa no próximo bloco
+      if (this._breakMouse) this._tryStartBreaking();
+    }
+  }
+
+  _setBreakProgress(progress) {
+    const bar  = document.getElementById('break-progress');
+    const fill = document.getElementById('break-fill');
+    if (!bar || !fill) return;
+    if (progress < 0) {
+      bar.style.display = 'none';
+    } else {
+      bar.style.display = 'block';
+      fill.style.width  = (progress * 100).toFixed(1) + '%';
+    }
   }
 
   _placeBlock() {
     const ray = castRay(this.camera, this.world);
     if (!ray) return;
     const { x, y, z } = ray.prev;
-    if (this.world.isSolid(x, y, z)) return;       // já ocupado
-    if (this._overlapsPlayer(x, y, z)) return;     // dentro do jogador
+    if (this.world.isSolid(x, y, z)) return;
+    if (this._overlapsPlayer(x, y, z)) return;
 
     this.world.setBlock(x, y, z, this.selectedBlock);
     this.network.sendBlockPlace(x, y, z, this.selectedBlock);
   }
 
-  /** Verifica se o bloco (bx,by,bz) intersecta a AABB do jogador. */
   _overlapsPlayer(bx, by, bz) {
     const pos   = this.position;
     const r     = PLAYER_WIDTH / 2;
@@ -251,21 +285,20 @@ export class PlayerController {
            bz < pos.z + r  && bz + 1 > pos.z - r;
   }
 
-  // ── Rede ──────────────────────────────────────────────────────────────────────
+  // ── Rede ──────────────────────────────────────────────────────────────────
 
   _broadcastPosition(dt) {
     this._moveSendTimer += dt;
     if (this._moveSendTimer < MOVE_SEND_RATE) return;
     this._moveSendTimer = 0;
 
-    const pos   = this.position;
-    const euler = new THREE.Euler().setFromQuaternion(this.camera.quaternion, 'YXZ');
-    // moving = true se está a mexer no plano horizontal
+    const pos    = this.position;
+    const euler  = new THREE.Euler().setFromQuaternion(this.camera.quaternion, 'YXZ');
     const moving = Math.abs(this.vel.x) > 0.1 || Math.abs(this.vel.z) > 0.1;
     this.network.sendMove(pos.x, pos.y, pos.z, euler.y, moving);
   }
 
-  // ── HUD ───────────────────────────────────────────────────────────────────────
+  // ── HUD ───────────────────────────────────────────────────────────────────
 
   _updateHUD() {
     const { x, y, z } = this.position;
