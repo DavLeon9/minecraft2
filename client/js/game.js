@@ -90,7 +90,9 @@ export class Game {
     const sc=sun.shadow.camera; sc.left=sc.bottom=-70; sc.right=sc.top=70;
     sc.near=0.5; sc.far=180; sun.shadow.mapSize.setScalar(2048); sun.shadow.bias=-0.0005;
     this.scene.add(sun);
-    this.scene.add(Object.assign(new THREE.DirectionalLight(0xadd8e6,.25),{position:new THREE.Vector3(-20,10,-20)}));
+    const fill = new THREE.DirectionalLight(0xadd8e6, 0.25);
+    fill.position.set(-20, 10, -20);
+    this.scene.add(fill);
   }
 
   // ── Network handlers ──────────────────────────────────────────────────────
