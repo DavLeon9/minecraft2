@@ -121,7 +121,7 @@ io.on('connection', (socket) => {
     x=x|0; y=y|0; z=z|0;
     if (!inBounds(x, y, z)) return;
     if (worldData[idx(x, y, z)] !== BLOCK.AIR) return;
-    type = Math.max(1, Math.min(6, type|0));
+    type = Math.max(1, Math.min(13, type|0));
     worldData[idx(x, y, z)] = type;
     db.saveBlock(x, y, z, type);
     io.emit('block:update', { x, y, z, type });

@@ -7,286 +7,162 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
-    canvas { display: block; }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    body { background:#000; overflow:hidden; font-family:'Courier New',monospace; }
+    canvas { display:block; }
 
-    /* ── TELA DE LOGIN ─────────────────────────────────────────────── */
+    /* ── LOGIN ─────────────────────────────────────────────────────── */
     #login-screen {
-      position: fixed; inset: 0; z-index: 30;
-      background:
-        linear-gradient(180deg,
-          #87ceeb 0%, #87ceeb 55%,
-          #5a9e3c 55%, #5a9e3c 60%,
-          #7a5c3a 60%, #7a5c3a 75%,
-          #555 75%, #555 100%);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
+      position:fixed; inset:0; z-index:30;
+      background:linear-gradient(180deg,#87ceeb 0%,#87ceeb 55%,#5a9e3c 55%,#5a9e3c 60%,#7a5c3a 60%,#7a5c3a 75%,#555 75%,#555 100%);
+      display:flex; align-items:center; justify-content:center;
     }
+    .login-card { background:rgba(10,10,10,.88); border:3px solid #4a8a4a; border-top:5px solid #5a9e3c; border-bottom:5px solid #3a3a3a; border-radius:4px; padding:36px 44px 40px; width:420px; max-width:95vw; text-align:center; box-shadow:0 8px 32px rgba(0,0,0,.8); }
+    .login-title { font-family:'Press Start 2P',monospace; font-size:1.35rem; color:#5a9e3c; text-shadow:3px 3px 0 #1a4a1a; margin-bottom:6px; }
+    .login-title span { color:#fff; }
+    .login-subtitle { font-size:.7rem; color:#888; margin-bottom:28px; letter-spacing:.12em; }
+    .login-label { display:block; text-align:left; color:#aaa; font-size:.72rem; margin-bottom:7px; }
+    #nick-input { width:100%; padding:11px 14px; font-size:1rem; font-family:'Courier New',monospace; background:#111; border:2px solid #444; border-radius:3px; color:#eee; outline:none; transition:border-color .15s; }
+    #nick-input:focus { border-color:#5a9e3c; }
+    #nick-input.error { border-color:#e53935; }
+    #nick-input.valid { border-color:#5a9e3c; }
+    #nick-error { display:block; min-height:18px; margin-top:6px; font-size:.72rem; color:#e53935; text-align:left; }
+    #btn-enter { margin-top:22px; width:100%; padding:13px; font-family:'Press Start 2P',monospace; font-size:.72rem; background:#4a7a2a; border:none; border-bottom:4px solid #2a4a10; border-radius:3px; color:#fff; cursor:pointer; transition:background .12s,transform .08s; }
+    #btn-enter:hover:not(:disabled) { background:#5a9e3c; }
+    #btn-enter:active:not(:disabled) { transform:translateY(2px); border-bottom-width:2px; }
+    #btn-enter:disabled { background:#333; border-bottom-color:#222; color:#666; cursor:not-allowed; }
+    .login-hint { margin-top:14px; font-size:.65rem; color:#555; }
 
-    .login-card {
-      background: rgba(10, 10, 10, 0.88);
-      border: 3px solid #4a8a4a;
-      border-top: 5px solid #5a9e3c;
-      border-bottom: 5px solid #3a3a3a;
-      border-radius: 4px;
-      padding: 36px 44px 40px;
-      width: 420px;
-      max-width: 95vw;
-      text-align: center;
-      box-shadow: 0 8px 32px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.05);
-    }
-
-    .login-title {
-      font-family: 'Press Start 2P', monospace;
-      font-size: 1.35rem;
-      color: #5a9e3c;
-      text-shadow: 3px 3px 0 #1a4a1a, -1px -1px 0 #1a4a1a;
-      letter-spacing: .05em;
-      line-height: 1.5;
-      margin-bottom: 6px;
-    }
-    .login-title span { color: #fff; }
-
-    .login-subtitle {
-      font-size: .7rem;
-      color: #888;
-      margin-bottom: 28px;
-      letter-spacing: .12em;
-    }
-
-    .login-label {
-      display: block;
-      text-align: left;
-      color: #aaa;
-      font-size: .72rem;
-      margin-bottom: 7px;
-      letter-spacing: .08em;
-    }
-
-    #nick-input {
-      width: 100%;
-      padding: 11px 14px;
-      font-size: 1rem;
-      font-family: 'Courier New', monospace;
-      background: #111;
-      border: 2px solid #444;
-      border-radius: 3px;
-      color: #eee;
-      outline: none;
-      transition: border-color .15s;
-      letter-spacing: .05em;
-    }
-    #nick-input:focus  { border-color: #5a9e3c; }
-    #nick-input.error  { border-color: #e53935; }
-    #nick-input.valid  { border-color: #5a9e3c; }
-
-    #nick-error {
-      display: block;
-      min-height: 18px;
-      margin-top: 6px;
-      font-size: .72rem;
-      color: #e53935;
-      text-align: left;
-    }
-
-    #btn-enter {
-      margin-top: 22px;
-      width: 100%;
-      padding: 13px;
-      font-family: 'Press Start 2P', monospace;
-      font-size: .72rem;
-      letter-spacing: .08em;
-      background: #4a7a2a;
-      border: none;
-      border-bottom: 4px solid #2a4a10;
-      border-radius: 3px;
-      color: #fff;
-      cursor: pointer;
-      transition: background .12s, transform .08s;
-    }
-    #btn-enter:hover:not(:disabled) { background: #5a9e3c; }
-    #btn-enter:active:not(:disabled) { transform: translateY(2px); border-bottom-width: 2px; }
-    #btn-enter:disabled { background: #333; border-bottom-color: #222; color: #666; cursor: not-allowed; }
-    .login-hint { margin-top: 14px; font-size: .65rem; color: #555; letter-spacing: .06em; }
-
-    /* ── OVERLAY DE PAUSA ──────────────────────────────────────────── */
-    /* pointer-events:none → overlay não bloqueia hotbar nem HUD       */
-    #overlay {
-      position: fixed; inset: 0;
-      background: rgba(0, 0, 0, .52);
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
-      color: #fff;
-      z-index: 10;
-      pointer-events: none;   /* ← transparente aos cliques */
-    }
-
-    /* O card de pausa em si é clicável */
-    .pause-card {
-      background: rgba(8, 8, 8, 0.92);
-      border: 3px solid #4a8a4a;
-      border-top: 4px solid #5a9e3c;
-      border-bottom: 4px solid #1a3a10;
-      border-radius: 4px;
-      padding: 28px 48px 32px;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 14px;
-      pointer-events: all;    /* ← card é interactivo */
-      box-shadow: 0 6px 28px rgba(0,0,0,.7);
-    }
-    .pause-card h2 {
-      font-family: 'Press Start 2P', monospace;
-      font-size: 1.1rem;
-      color: #5a9e3c;
-      text-shadow: 2px 2px 0 #1a4a1a;
-    }
-    #overlay-msg { font-size: .78rem; opacity: .6; }
-    #btn-play {
-      padding: 12px 36px;
-      font-family: 'Press Start 2P', monospace;
-      font-size: .68rem;
-      letter-spacing: .08em;
-      background: #4a7a2a;
-      border: none;
-      border-bottom: 4px solid #2a4a10;
-      border-radius: 3px;
-      color: #fff;
-      cursor: pointer;
-      display: none;
-    }
-    #btn-play:hover { background: #5a9e3c; }
+    /* ── PAUSA ─────────────────────────────────────────────────────── */
+    #overlay { position:fixed; inset:0; background:rgba(0,0,0,.52); display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; color:#fff; z-index:10; pointer-events:none; }
+    .pause-card { background:rgba(8,8,8,.92); border:3px solid #4a8a4a; border-top:4px solid #5a9e3c; border-bottom:4px solid #1a3a10; border-radius:4px; padding:28px 48px 32px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:14px; pointer-events:all; box-shadow:0 6px 28px rgba(0,0,0,.7); }
+    .pause-card h2 { font-family:'Press Start 2P',monospace; font-size:1.1rem; color:#5a9e3c; text-shadow:2px 2px 0 #1a4a1a; }
+    #overlay-msg { font-size:.78rem; opacity:.6; }
+    #btn-play { padding:12px 36px; font-family:'Press Start 2P',monospace; font-size:.68rem; background:#4a7a2a; border:none; border-bottom:4px solid #2a4a10; border-radius:3px; color:#fff; cursor:pointer; display:none; pointer-events:all; }
+    #btn-play:hover { background:#5a9e3c; }
 
     /* ── HUD ───────────────────────────────────────────────────────── */
-    #hud {
-      position: fixed; inset: 0;
-      pointer-events: none;
-      color: #fff;
+    #hud { position:fixed; inset:0; pointer-events:none; color:#fff; }
+    #crosshair { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
+    #crosshair::before,#crosshair::after { content:''; position:absolute; background:rgba(255,255,255,.9); }
+    #crosshair::before { width:2px; height:22px; left:50%; top:-11px; }
+    #crosshair::after  { width:22px; height:2px; top:50%; left:-11px; transform:translateY(-50%); }
+    #break-progress { position:absolute; left:50%; top:calc(50% + 22px); transform:translateX(-50%); width:90px; height:7px; background:rgba(0,0,0,.65); border:1px solid rgba(255,255,255,.35); border-radius:3px; overflow:hidden; display:none; }
+    #break-fill { height:100%; width:0%; background:linear-gradient(90deg,#ff8800,#ffcc00); border-radius:2px; transition:width .04s linear; }
+
+    /* Hotbar */
+    #hotbar { position:absolute; bottom:24px; left:50%; transform:translateX(-50%); display:flex; gap:4px; z-index:15; pointer-events:all; }
+    .slot { width:54px; height:54px; border:2px solid rgba(255,255,255,.35); border-radius:4px; background:rgba(0,0,0,.55); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:8px; opacity:.82; transition:border-color .1s; cursor:pointer; position:relative; }
+    .slot:hover { opacity:1; border-color:rgba(255,255,255,.6); }
+    .slot.active { border-color:#fff; opacity:1; border-width:3px; }
+    .slot-swatch { width:32px; height:32px; border-radius:2px; image-rendering:pixelated; }
+    .slot-label { font-size:7px; color:#ccc; text-shadow:1px 1px 0 #000; }
+    .slot .slot-icon { font-size:16px; line-height:1; }
+    .slot .slot-qty { position:absolute; bottom:2px; right:4px; font-size:9px; font-weight:bold; text-shadow:1px 1px 0 #000; color:#fff; }
+
+    #info { position:absolute; top:8px; left:8px; font-size:11px; line-height:1.7; text-shadow:1px 1px 0 #000; }
+    #controls-hint { position:absolute; bottom:88px; right:10px; font-size:10px; opacity:.42; text-align:right; line-height:1.8; }
+    #info-nick { position:absolute; top:8px; right:10px; font-size:11px; opacity:.7; text-shadow:1px 1px 0 #000; }
+
+    /* ── INVENTÁRIO ────────────────────────────────────────────────── */
+    #inventory-screen {
+      position:fixed; inset:0; z-index:20;
+      background:rgba(0,0,0,.72);
+      display:none; align-items:center; justify-content:center;
+    }
+    #inventory-screen.open { display:flex; }
+
+    .inv-panel {
+      background:#2a2a2a;
+      border:3px solid #555;
+      border-radius:6px;
+      padding:16px 20px 20px;
+      width:560px; max-width:98vw;
+      max-height:95vh; overflow-y:auto;
+      box-shadow:0 8px 40px rgba(0,0,0,.9);
+    }
+    .inv-title {
+      font-family:'Press Start 2P',monospace; font-size:.75rem; color:#ccc;
+      margin-bottom:14px; text-align:center;
     }
 
-    /* Crosshair */
-    #crosshair {
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-    }
-    #crosshair::before, #crosshair::after {
-      content: '';
-      position: absolute;
-      background: rgba(255,255,255,.9);
-    }
-    #crosshair::before { width: 2px; height: 22px; left: 50%; top: -11px; }
-    #crosshair::after  { width: 22px; height: 2px; top: 50%;  left: -11px; transform: translateY(-50%); }
+    /* Tabs */
+    .craft-tabs { display:flex; gap:6px; margin-bottom:12px; }
+    .craft-tab { flex:1; padding:7px; font-family:'Press Start 2P',monospace; font-size:.55rem; background:#333; border:2px solid #555; border-radius:4px; color:#aaa; cursor:pointer; text-align:center; }
+    .craft-tab:hover { background:#444; color:#fff; }
+    .craft-tab.active { background:#4a7a2a; border-color:#5a9e3c; color:#fff; }
 
-    /* Barra de progresso de partida de bloco */
-    #break-progress {
-      position: absolute;
-      left: 50%;
-      top: calc(50% + 22px);
-      transform: translateX(-50%);
-      width: 90px;
-      height: 7px;
-      background: rgba(0,0,0,0.65);
-      border: 1px solid rgba(255,255,255,0.35);
-      border-radius: 3px;
-      overflow: hidden;
-      display: none;
-    }
-    #break-fill {
-      height: 100%;
-      width: 0%;
-      background: linear-gradient(90deg, #ff8800, #ffcc00);
-      border-radius: 2px;
-      transition: width 0.04s linear;
-    }
+    /* Craft areas */
+    .craft-panel { margin-bottom:14px; }
+    .craft-row { display:flex; align-items:center; gap:10px; }
+    .craft-grid { display:grid; gap:3px; }
+    .craft-grid.size2 { grid-template-columns:repeat(2,40px); }
+    .craft-grid.size3 { grid-template-columns:repeat(3,40px); }
+    .craft-arrow { font-size:22px; color:#888; margin:0 4px; }
+    .craft-result { width:44px; height:44px; }
 
-    /* Hotbar — pointer-events:all para ser clicável mesmo pausado */
-    #hotbar {
-      position: absolute; bottom: 24px; left: 50%;
-      transform: translateX(-50%);
-      display: flex; gap: 4px;
-      z-index: 15;
-      pointer-events: all;
-    }
-    .slot {
-      width: 52px; height: 52px;
-      border: 2px solid rgba(255,255,255,.35);
-      border-radius: 4px;
-      background: rgba(0,0,0,.50);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 3px;
-      font-size: 8px; opacity: .82;
-      transition: border-color .1s, opacity .1s;
-      cursor: pointer;
-    }
-    .slot:hover   { opacity: 1; border-color: rgba(255,255,255,.6); }
-    .slot.active  { border-color: #fff; opacity: 1; border-width: 3px; }
-    .slot-swatch  {
-      width: 30px; height: 30px;
-      border-radius: 3px;
-      image-rendering: pixelated;
-    }
-    .slot-label   { font-size: 7.5px; color: #ddd; text-shadow: 1px 1px 0 #000; }
+    /* Inventory slots */
+    .inv-section { margin-bottom:10px; }
+    .inv-section-label { font-size:9px; color:#888; margin-bottom:5px; }
+    .inv-grid { display:grid; grid-template-columns:repeat(9,44px); gap:3px; }
+    .inv-grid.hotbar-row { margin-top:6px; border-top:2px solid #444; padding-top:8px; }
 
-    /* Info */
-    #info {
-      position: absolute; top: 8px; left: 8px;
-      font-size: 11px; line-height: 1.7;
-      text-shadow: 1px 1px 0 #000;
+    /* Individual slot */
+    .inv-slot {
+      width:40px; height:40px;
+      border:2px solid #555; border-radius:3px;
+      background:#1a1a1a;
+      cursor:pointer; position:relative;
+      display:flex; align-items:center; justify-content:center;
+      font-size:18px;
+      image-rendering:pixelated;
+      transition:border-color .1s;
     }
+    .inv-slot:hover { border-color:#aaa; }
+    .inv-slot.result { border-color:#5a9e3c; width:44px; height:44px; background:#111; }
+    .inv-slot .slot-qty {
+      position:absolute; bottom:1px; right:2px;
+      font-size:9px; font-weight:bold; color:#fff; text-shadow:1px 1px 0 #000;
+    }
+    .inv-slot .slot-icon { font-size:20px; line-height:1; pointer-events:none; }
 
-    /* Controls */
-    #controls-hint {
-      position: absolute; bottom: 86px; right: 10px;
-      font-size: 10px; opacity: .42;
-      text-align: right; line-height: 1.8;
-    }
+    /* Fornalha */
+    .furnace-layout { display:flex; align-items:center; gap:12px; }
+    .furnace-col { display:flex; flex-direction:column; gap:6px; }
+    .furnace-label { font-size:8px; color:#888; text-align:center; }
+    #smelt-btn { padding:8px 12px; font-family:'Press Start 2P',monospace; font-size:.5rem; background:#8b4a00; border:2px solid #aa6600; border-radius:3px; color:#fff; cursor:pointer; }
+    #smelt-btn:hover { background:#aa6600; }
 
-    /* Nick local */
-    #info-nick {
-      position: absolute; top: 8px; right: 10px;
-      font-size: 11px; opacity: .7;
-      text-shadow: 1px 1px 0 #000;
+    /* Cursor segurado */
+    #cursor-item {
+      position:fixed; z-index:99; width:40px; height:40px;
+      border:2px solid #aaa; border-radius:3px;
+      display:none; align-items:center; justify-content:center;
+      pointer-events:none; font-size:18px;
     }
+    #cursor-item .slot-qty { position:absolute; bottom:1px; right:2px; font-size:9px; font-weight:bold; color:#fff; text-shadow:1px 1px 0 #000; }
   </style>
 </head>
 <body>
 
-<!-- ── TELA DE LOGIN ──────────────────────────────────────────────────── -->
+<!-- ── LOGIN ──────────────────────────────────────────────────────────── -->
 <div id="login-screen">
   <div class="login-card">
     <div class="login-title">⛏ MINECRAFT <span>2</span></div>
-    <div class="login-subtitle">MUNDO MULTIPLAYER</div>
-
+    <div class="login-subtitle">MODO SOBREVIVÊNCIA</div>
     <label class="login-label" for="nick-input">O teu nick</label>
-    <input
-      type="text"
-      id="nick-input"
-      placeholder="ex: Steve_123"
-      maxlength="16"
-      autocomplete="off"
-      spellcheck="false"
-    />
+    <input type="text" id="nick-input" placeholder="ex: Steve_123" maxlength="16" autocomplete="off" spellcheck="false"/>
     <span id="nick-error"></span>
-
     <button id="btn-enter">▶ ENTRAR NO MUNDO</button>
-    <p class="login-hint">2–16 caracteres · letras, números e _</p>
+    <p class="login-hint" style="margin-top:14px;font-size:.65rem;color:#555;">2–16 chars · letras, números e _</p>
   </div>
 </div>
 
-<!-- ── OVERLAY DE PAUSA ───────────────────────────────────────────────── -->
+<!-- ── PAUSA ───────────────────────────────────────────────────────────── -->
 <div id="overlay">
   <div class="pause-card">
     <h2>⏸ PAUSADO</h2>
-    <p id="overlay-msg">Premiste ESC</p>
+    <p id="overlay-msg"></p>
     <button id="btn-play">▶ CONTINUAR</button>
   </div>
 </div>
@@ -297,26 +173,15 @@
   <div id="break-progress"><div id="break-fill"></div></div>
 
   <div id="hotbar">
-    <div class="slot active" data-block="1">
-      <div class="slot-swatch" style="background:linear-gradient(180deg,#6db340 30%,#7a5c3a 30%)"></div>
-      <span class="slot-label">Relva [1]</span>
-    </div>
-    <div class="slot" data-block="2">
-      <div class="slot-swatch" style="background:#7a5230"></div>
-      <span class="slot-label">Terra [2]</span>
-    </div>
-    <div class="slot" data-block="3">
-      <div class="slot-swatch" style="background:#9a9a9a"></div>
-      <span class="slot-label">Pedra [3]</span>
-    </div>
-    <div class="slot" data-block="4">
-      <div class="slot-swatch" style="background:repeating-linear-gradient(180deg,#ac7828 0,#ac7828 3px,#6e4818 3px,#6e4818 4px)"></div>
-      <span class="slot-label">Madeira [4]</span>
-    </div>
-    <div class="slot" data-block="5">
-      <div class="slot-swatch" style="background:radial-gradient(circle,#7a4a28 30%,#5c3a1a 30%,#5c3a1a 60%,#8c5c36 60%)"></div>
-      <span class="slot-label">Tronco [5]</span>
-    </div>
+    <div class="slot active" data-slot="0"><div class="slot-swatch"></div></div>
+    <div class="slot" data-slot="1"><div class="slot-swatch"></div></div>
+    <div class="slot" data-slot="2"><div class="slot-swatch"></div></div>
+    <div class="slot" data-slot="3"><div class="slot-swatch"></div></div>
+    <div class="slot" data-slot="4"><div class="slot-swatch"></div></div>
+    <div class="slot" data-slot="5"><div class="slot-swatch"></div></div>
+    <div class="slot" data-slot="6"><div class="slot-swatch"></div></div>
+    <div class="slot" data-slot="7"><div class="slot-swatch"></div></div>
+    <div class="slot" data-slot="8"><div class="slot-swatch"></div></div>
   </div>
 
   <div id="info">
@@ -330,11 +195,136 @@
     WASD · mover<br>
     Espaço · saltar<br>
     LMB (segurar) · partir<br>
-    RMB · colocar<br>
-    1-5 / scroll · bloco<br>
+    RMB · colocar/interagir<br>
+    1-9 / scroll · slot<br>
+    <b>E</b> · inventário<br>
     Esc · pausa
   </div>
 </div>
+
+<!-- ── INVENTÁRIO ─────────────────────────────────────────────────────── -->
+<div id="inventory-screen">
+  <div class="inv-panel">
+    <div class="inv-title">MINECRAFT 2 — INVENTÁRIO</div>
+
+    <!-- Tabs -->
+    <div class="craft-tabs">
+      <button class="craft-tab active" data-mode="inventory">🎒 Crafting 2×2</button>
+      <button class="craft-tab" data-mode="crafting">🪓 Bancada 3×3</button>
+      <button class="craft-tab" data-mode="furnace">🔥 Fornalha</button>
+    </div>
+
+    <!-- Painel 2×2 -->
+    <div class="craft-panel" id="panel-inventory">
+      <div class="craft-row">
+        <div class="craft-grid size2">
+          <div class="inv-slot" data-area="craft2" data-idx="0"></div>
+          <div class="inv-slot" data-area="craft2" data-idx="1"></div>
+          <div class="inv-slot" data-area="craft2" data-idx="2"></div>
+          <div class="inv-slot" data-area="craft2" data-idx="3"></div>
+        </div>
+        <div class="craft-arrow">→</div>
+        <div class="inv-slot result" id="craft-result-slot"></div>
+      </div>
+    </div>
+
+    <!-- Painel 3×3 -->
+    <div class="craft-panel" id="panel-crafting" style="display:none">
+      <div class="craft-row">
+        <div class="craft-grid size3">
+          <div class="inv-slot" data-area="craft3" data-idx="0"></div>
+          <div class="inv-slot" data-area="craft3" data-idx="1"></div>
+          <div class="inv-slot" data-area="craft3" data-idx="2"></div>
+          <div class="inv-slot" data-area="craft3" data-idx="3"></div>
+          <div class="inv-slot" data-area="craft3" data-idx="4"></div>
+          <div class="inv-slot" data-area="craft3" data-idx="5"></div>
+          <div class="inv-slot" data-area="craft3" data-idx="6"></div>
+          <div class="inv-slot" data-area="craft3" data-idx="7"></div>
+          <div class="inv-slot" data-area="craft3" data-idx="8"></div>
+        </div>
+        <div class="craft-arrow">→</div>
+        <div class="inv-slot result" id="craft-result-slot"></div>
+      </div>
+      <p style="font-size:9px;color:#777;margin-top:8px;">Precisas de ter uma Bancada colocada e clicar nela com RMB para usar este painel.</p>
+    </div>
+
+    <!-- Painel Fornalha -->
+    <div class="craft-panel" id="panel-furnace" style="display:none">
+      <div class="furnace-layout">
+        <div class="furnace-col">
+          <div class="furnace-label">Ingrediente</div>
+          <div class="inv-slot" data-area="furnace" data-idx="0"></div>
+        </div>
+        <div class="furnace-col">
+          <div class="furnace-label">Combustível</div>
+          <div class="inv-slot" data-area="furnace" data-idx="1"></div>
+        </div>
+        <div class="craft-arrow">🔥</div>
+        <button id="smelt-btn">FUNDIR</button>
+        <div class="craft-arrow">→</div>
+        <div class="furnace-col">
+          <div class="furnace-label">Resultado</div>
+          <div class="inv-slot result" id="smelt-result-slot"></div>
+        </div>
+      </div>
+      <p style="font-size:9px;color:#777;margin-top:8px;">Coloca ferro/ouro bruto + carvão e clica FUNDIR. Precisas ter uma Fornalha colocada.</p>
+    </div>
+
+    <!-- Armazenamento -->
+    <div class="inv-section">
+      <div class="inv-section-label">ARMAZENAMENTO</div>
+      <div class="inv-grid">
+        <!-- slots 9-35 -->
+        <div class="inv-slot" data-area="inv" data-idx="9"></div>
+        <div class="inv-slot" data-area="inv" data-idx="10"></div>
+        <div class="inv-slot" data-area="inv" data-idx="11"></div>
+        <div class="inv-slot" data-area="inv" data-idx="12"></div>
+        <div class="inv-slot" data-area="inv" data-idx="13"></div>
+        <div class="inv-slot" data-area="inv" data-idx="14"></div>
+        <div class="inv-slot" data-area="inv" data-idx="15"></div>
+        <div class="inv-slot" data-area="inv" data-idx="16"></div>
+        <div class="inv-slot" data-area="inv" data-idx="17"></div>
+        <div class="inv-slot" data-area="inv" data-idx="18"></div>
+        <div class="inv-slot" data-area="inv" data-idx="19"></div>
+        <div class="inv-slot" data-area="inv" data-idx="20"></div>
+        <div class="inv-slot" data-area="inv" data-idx="21"></div>
+        <div class="inv-slot" data-area="inv" data-idx="22"></div>
+        <div class="inv-slot" data-area="inv" data-idx="23"></div>
+        <div class="inv-slot" data-area="inv" data-idx="24"></div>
+        <div class="inv-slot" data-area="inv" data-idx="25"></div>
+        <div class="inv-slot" data-area="inv" data-idx="26"></div>
+        <div class="inv-slot" data-area="inv" data-idx="27"></div>
+        <div class="inv-slot" data-area="inv" data-idx="28"></div>
+        <div class="inv-slot" data-area="inv" data-idx="29"></div>
+        <div class="inv-slot" data-area="inv" data-idx="30"></div>
+        <div class="inv-slot" data-area="inv" data-idx="31"></div>
+        <div class="inv-slot" data-area="inv" data-idx="32"></div>
+        <div class="inv-slot" data-area="inv" data-idx="33"></div>
+        <div class="inv-slot" data-area="inv" data-idx="34"></div>
+        <div class="inv-slot" data-area="inv" data-idx="35"></div>
+      </div>
+    </div>
+
+    <!-- Hotbar dentro do inventário -->
+    <div class="inv-section">
+      <div class="inv-section-label">HOTBAR</div>
+      <div class="inv-grid hotbar-row">
+        <div class="inv-slot" data-area="inv" data-idx="0"></div>
+        <div class="inv-slot" data-area="inv" data-idx="1"></div>
+        <div class="inv-slot" data-area="inv" data-idx="2"></div>
+        <div class="inv-slot" data-area="inv" data-idx="3"></div>
+        <div class="inv-slot" data-area="inv" data-idx="4"></div>
+        <div class="inv-slot" data-area="inv" data-idx="5"></div>
+        <div class="inv-slot" data-area="inv" data-idx="6"></div>
+        <div class="inv-slot" data-area="inv" data-idx="7"></div>
+        <div class="inv-slot" data-area="inv" data-idx="8"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Item segurado pelo cursor -->
+<div id="cursor-item"></div>
 
 <script type="importmap">
 {
@@ -344,9 +334,7 @@
   }
 }
 </script>
-
 <script src="/socket.io/socket.io.js"></script>
 <script type="module" src="js/main.js"></script>
-
 </body>
 </html>

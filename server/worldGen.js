@@ -1,5 +1,9 @@
 // ─── Block type constants ──────────────────────────────────────────────────────
-const BLOCK = { AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, WOOD: 4, LOG: 5, LEAVES: 6 };
+const BLOCK = {
+  AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, WOOD: 4, LOG: 5, LEAVES: 6,
+  COAL_ORE: 7, IRON_ORE: 8, GOLD_ORE: 9, DIAMOND_ORE: 10,
+  CRAFTING_TABLE: 11, FURNACE: 12, COBBLESTONE: 13,
+};
 
 /**
  * Height function: overlapping sine waves → natural-looking hills.
@@ -44,6 +48,26 @@ function generateWorld(W, D, H) {
         else if (y < surf)       data[idx(x, y, z)] = BLOCK.DIRT;
         else if (y === surf)     data[idx(x, y, z)] = BLOCK.GRASS;
         // else: AIR (Uint8Array defaults to 0)
+      }
+    }
+  }
+
+  // ── Ores ──────────────────────────────────────────────────────────────────
+  // Replace some STONE blocks with ore veins based on deterministic hashes
+  for (let x = 0; x < W; x++) {
+    for (let z = 0; z < D; z++) {
+      const surf = getHeight(x, z);
+      for (let y = 1; y < surf - 3; y++) {
+        if (data[idx(x, y, z)] !== BLOCK.STONE) continue;
+        const h = treeHash(x * 31 + y, z * 17 + y * 7);
+        // Diamond: y < 5, ~1.5% of stone
+        if (y < 5 && (h % 67) < 1) { data[idx(x, y, z)] = BLOCK.DIAMOND_ORE; continue; }
+        // Gold: y < 9, ~2% of stone
+        if (y < 9 && (h % 50) < 1) { data[idx(x, y, z)] = BLOCK.GOLD_ORE; continue; }
+        // Iron: y < surf-4, ~4% of stone
+        if (y < surf - 4 && (h % 25) < 1) { data[idx(x, y, z)] = BLOCK.IRON_ORE; continue; }
+        // Coal: y < surf-2, ~6% of stone
+        if (y < surf - 2 && (h % 17) < 1) { data[idx(x, y, z)] = BLOCK.COAL_ORE; }
       }
     }
   }
