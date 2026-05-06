@@ -7,19 +7,24 @@ import { PlayerAvatar }          from './avatar.js';
 import { HandRenderer }          from './handRenderer.js';
 import { Inventory }             from './inventory.js';
 import { PLAYER_EYE_Y, BLOCK }   from './constants.js';
-import { ITEM_ID, getItemInfo, ITEM_COLOR, ITEM_ICON, isBlockItem } from './items.js';
+import { ITEM_ID, getItemInfo, ITEM_COLOR, ITEM_ICON, isBlockItem, getItemIconDataUrl } from './items.js';
 import { matchRecipe, consumeIngredients, SMELT_RECIPES } from './crafting.js';
 
 // ─── Utilidade de display de slot ─────────────────────────────────────────────
 function renderSlotEl(el, item) {
-  if (!item) { el.innerHTML=''; el.style.background=''; return; }
-  const col = ITEM_COLOR[item.id] || '#666';
-  el.style.background = col;
-  const icon = ITEM_ICON[item.id] || '';
-  el.innerHTML = `
-    <span class="slot-icon">${icon}</span>
-    ${item.count > 1 ? `<span class="slot-qty">${item.count}</span>` : ''}
-  `;
+  if (!item) {
+    el.innerHTML = '';
+    el.style.backgroundImage = '';
+    el.style.backgroundColor = '';
+    return;
+  }
+  const url = getItemIconDataUrl(item.id);
+  el.style.backgroundImage    = `url(${url})`;
+  el.style.backgroundSize     = '78% 78%';
+  el.style.backgroundRepeat   = 'no-repeat';
+  el.style.backgroundPosition = 'center';
+  el.style.backgroundColor    = '';
+  el.innerHTML = item.count > 1 ? `<span class="slot-qty">${item.count}</span>` : '';
 }
 
 export class Game {
@@ -177,26 +182,49 @@ export class Game {
       }
     });
 
-    // Click nos slots do inventário
-    document.addEventListener('click', e => {
+    // Drag: mousedown pega item, mouseup solta item noutro slot
+    let _dragSrc = null;
+    document.addEventListener('mousedown', e => {
+      if (!this._invOpen) return;
+      if (e.button !== 0) return;
       const slot = e.target.closest('.inv-slot');
+      const isResult = e.target.closest('#craft-result-slot,#smelt-result-slot');
+      if (isResult) { this._takeCraftResult(); return; }
       if (!slot) return;
+      e.preventDefault();
+      const idx = parseInt(slot.dataset.idx);
+      const area = slot.dataset.area;
+      _dragSrc = { idx, area };
+      if (!this._heldItem) {
+        // pegar item
+        this._pickupSlot(idx, area);
+        this._renderInventoryUI(); this._renderCursor();
+      }
+    });
+    document.addEventListener('mouseup', e => {
+      if (!this._invOpen || e.button !== 0) return;
+      const slot = e.target.closest('.inv-slot');
+      if (!slot || !this._heldItem) { _dragSrc = null; return; }
       const idx  = parseInt(slot.dataset.idx);
       const area = slot.dataset.area;
-      this._handleSlotClick(idx, area, e.button===2);
+      // Não colocar de volta na mesma origem (seria no-op)
+      if (_dragSrc && _dragSrc.idx === idx && _dragSrc.area === area) { _dragSrc = null; return; }
+      _dragSrc = null;
+      this._placeSlot(idx, area, false);
+      this._renderInventoryUI(); this._renderCursor();
     });
     document.addEventListener('contextmenu', e => {
+      if (!this._invOpen) return;
       const slot = e.target.closest('.inv-slot');
       if (!slot) return;
       e.preventDefault();
       const idx  = parseInt(slot.dataset.idx);
       const area = slot.dataset.area;
-      this._handleSlotClick(idx, area, true);
+      if (!this._heldItem) this._pickupSlot(idx, area, true);
+      else this._placeSlot(idx, area, true);
+      this._renderInventoryUI(); this._renderCursor();
     });
 
-    // Click no resultado de craft
-    document.getElementById('craft-result-slot')?.addEventListener('click', () => this._takeCraftResult());
-    document.getElementById('smelt-result-slot')?.addEventListener('click', () => this._takeSmeltResult());
     document.getElementById('smelt-btn')?.addEventListener('click', () => this._doSmelt());
 
     // Fechar ao clicar no fundo escuro
@@ -256,72 +284,67 @@ export class Game {
     this._updateCraftResult();
   }
 
-  // ── Slot click logic ──────────────────────────────────────────────────────
-  _handleSlotClick(idx, area, isRight) {
-    if (area === 'inv') {
-      const slot = this.inventory.getSlot(idx);
-      if (!this._heldItem && slot) {
-        // Pega no item
-        if (isRight) {
-          const half = Math.ceil(slot.count / 2);
-          this._heldItem = { id: slot.id, count: half };
-          slot.count -= half;
-          if (slot.count <= 0) this.inventory.setSlot(idx, null);
-          else this.inventory.slots[idx] = slot;
-        } else {
-          this._heldItem = { ...slot };
-          this.inventory.setSlot(idx, null);
-        }
-      } else if (this._heldItem) {
-        // Coloca / empilha / troca
-        if (!slot) {
-          const put = isRight ? 1 : this._heldItem.count;
-          this.inventory.setSlot(idx, { id: this._heldItem.id, count: put });
-          this._heldItem.count -= put;
-          if (this._heldItem.count <= 0) this._heldItem = null;
-        } else if (slot.id === this._heldItem.id) {
-          const max = getItemInfo(slot.id).max ?? 64;
-          const room = max - slot.count;
-          const put  = isRight ? Math.min(1, room) : Math.min(this._heldItem.count, room);
-          slot.count += put; this._heldItem.count -= put;
-          this.inventory.slots[idx] = slot;
-          if (this._heldItem.count <= 0) this._heldItem = null;
-        } else {
-          const tmp = { ...slot };
-          this.inventory.setSlot(idx, this._heldItem);
-          this._heldItem = tmp;
-        }
-      }
-      this.inventory._changed();
-    } else if (area === 'craft2') {
-      this._handleCraftSlot(this._craftSlots, idx);
-      this._updateCraftResult();
-    } else if (area === 'craft3') {
-      this._handleCraftSlot(this._craftSlots3, idx);
-      this._updateCraftResult();
-    } else if (area === 'furnace') {
-      this._handleCraftSlot(this._furnaceSlots, idx);
+  // ── Slot logic — pickup / place ───────────────────────────────────────────
+
+  _pickupSlot(idx, area, half=false) {
+    const slots = this._slotsFor(area);
+    if (!slots) return;
+    const slot = area === 'inv' ? this.inventory.getSlot(idx) : slots[idx];
+    if (!slot) return;
+    if (half) {
+      const n = Math.ceil(slot.count / 2);
+      this._heldItem = { id: slot.id, count: n };
+      const rem = slot.count - n;
+      if (area === 'inv') this.inventory.setSlot(idx, rem > 0 ? { id: slot.id, count: rem } : null);
+      else slots[idx] = rem > 0 ? { id: slot.id, count: rem } : null;
+    } else {
+      this._heldItem = { ...slot };
+      if (area === 'inv') this.inventory.setSlot(idx, null);
+      else slots[idx] = null;
     }
-    this._renderInventoryUI();
-    this._renderCursor();
+    if (area === 'inv') this.inventory._changed();
+    if (area === 'craft2' || area === 'craft3') this._updateCraftResult();
   }
 
-  _handleCraftSlot(slots, idx) {
-    const slot = slots[idx];
-    if (!this._heldItem && slot) {
-      this._heldItem = { ...slot }; slots[idx] = null;
-    } else if (this._heldItem) {
-      if (!slot) {
-        slots[idx] = { id:this._heldItem.id, count:1 };
-        this._heldItem.count--;
-        if (this._heldItem.count<=0) this._heldItem=null;
-      } else if (slot.id===this._heldItem.id) {
-        slot.count++; this._heldItem.count--;
-        if (this._heldItem.count<=0) this._heldItem=null;
-      } else {
-        const tmp={...slot}; slots[idx]=this._heldItem; this._heldItem=tmp;
-      }
+  _placeSlot(idx, area, one=false) {
+    if (!this._heldItem) return;
+    const slots = this._slotsFor(area);
+    if (!slots) return;
+    const cur = area === 'inv' ? this.inventory.getSlot(idx) : slots[idx];
+    const put = one ? 1 : this._heldItem.count;
+
+    if (!cur) {
+      const n = Math.min(put, (getItemInfo(this._heldItem.id).max ?? 64));
+      const placed = { id: this._heldItem.id, count: n };
+      if (area === 'inv') this.inventory.setSlot(idx, placed);
+      else slots[idx] = placed;
+      this._heldItem.count -= n;
+      if (this._heldItem.count <= 0) this._heldItem = null;
+    } else if (cur.id === this._heldItem.id) {
+      const max  = getItemInfo(cur.id).max ?? 64;
+      const room = max - cur.count;
+      const n    = Math.min(put, room);
+      cur.count += n; this._heldItem.count -= n;
+      if (area === 'inv') this.inventory.slots[idx] = cur;
+      else slots[idx] = cur;
+      if (this._heldItem.count <= 0) this._heldItem = null;
+    } else {
+      // swap
+      const tmp = { ...cur };
+      if (area === 'inv') this.inventory.setSlot(idx, this._heldItem);
+      else slots[idx] = this._heldItem;
+      this._heldItem = tmp;
     }
+    if (area === 'inv') this.inventory._changed();
+    if (area === 'craft2' || area === 'craft3') this._updateCraftResult();
+  }
+
+  _slotsFor(area) {
+    if (area === 'inv')     return this.inventory.slots; // special-cased above
+    if (area === 'craft2')  return this._craftSlots;
+    if (area === 'craft3')  return this._craftSlots3;
+    if (area === 'furnace') return this._furnaceSlots;
+    return null;
   }
 
   _takeCraftResult() {
@@ -390,19 +413,17 @@ export class Game {
   _renderHotbar() {
     document.querySelectorAll('#hotbar .slot').forEach((el, i) => {
       const item = this.inventory.getHotbar(i);
-      const swatch = el.querySelector('.slot-swatch') || el;
       if (item) {
-        const col = ITEM_COLOR[item.id] || '#888';
-        swatch.style.background = col;
-        let qty = el.querySelector('.slot-qty');
-        if (!qty) { qty=document.createElement('span'); qty.className='slot-qty'; el.appendChild(qty); }
-        qty.textContent = item.count > 1 ? item.count : '';
-        const icon = ITEM_ICON[item.id]||'';
-        let ic = el.querySelector('.slot-icon'); if(!ic){ic=document.createElement('span');ic.className='slot-icon';el.insertBefore(ic,el.firstChild);} ic.textContent=icon;
+        const url = getItemIconDataUrl(item.id);
+        el.style.backgroundImage    = `url(${url})`;
+        el.style.backgroundSize     = '70% 70%';
+        el.style.backgroundRepeat   = 'no-repeat';
+        el.style.backgroundPosition = 'center';
+        el.innerHTML = item.count > 1
+          ? `<span class="slot-qty">${item.count}</span>` : '';
       } else {
-        swatch.style.background = '';
-        el.querySelector('.slot-qty')?.remove();
-        el.querySelector('.slot-icon')?.remove();
+        el.style.backgroundImage = '';
+        el.innerHTML = '';
       }
       el.classList.toggle('active', i === (this.player?.selectedSlot ?? 0));
     });

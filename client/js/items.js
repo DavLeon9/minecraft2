@@ -158,6 +158,143 @@ export function getBreakTime(blockType, heldId) {
   return base;
 }
 
+// ─── Ícones de inventário (canvas pixel-art 32×32) ───────────────────────────
+const _iconCache = {};
+
+export function getItemIconDataUrl(id) {
+  if (_iconCache[id]) return _iconCache[id];
+  const cv = document.createElement('canvas'); cv.width = cv.height = 32;
+  const c  = cv.getContext('2d');
+  c.imageSmoothingEnabled = false;
+  _drawItemIcon(c, id);
+  return (_iconCache[id] = cv.toDataURL());
+}
+
+// helpers
+function _r(c, x, y, w, h, col) { c.fillStyle = col; c.fillRect(x, y, w, h); }
+
+// 3-face block pseudo-isometric
+function _block3d(c, top, left, right) {
+  _r(c, 4, 2, 24, 12, top);    // top face
+  _r(c, 2, 13, 15, 16, left);  // left face
+  _r(c, 17, 13, 13, 16, right);// right face
+  _r(c, 2, 12, 28, 1, 'rgba(0,0,0,0.6)');  // top/side divider
+  _r(c, 16, 13, 1, 16, 'rgba(0,0,0,0.5)'); // left/right divider
+  // top-face highlight edge
+  _r(c, 4, 2, 24, 1, 'rgba(255,255,255,0.2)');
+}
+
+// gem diamond shape
+function _gem(c, mid, hi, lo) {
+  _r(c, 11, 5,  10, 4, mid);
+  _r(c,  9, 9,  14, 6, mid);
+  _r(c, 11, 15, 10, 5, mid);
+  _r(c, 11, 5,   5, 3, hi);   // highlight
+  _r(c, 16, 16,  5, 4, lo);   // shadow
+}
+
+// ingot bar
+function _ingot(c, mid, hi, lo) {
+  _r(c, 5, 10, 22, 12, mid);
+  _r(c, 5, 10, 22,  3, hi);
+  _r(c, 5, 19, 22,  3, lo);
+  _r(c, 5, 10,  1, 12, 'rgba(0,0,0,0.4)');
+  _r(c,26, 10,  1, 12, 'rgba(0,0,0,0.4)');
+}
+
+// diagonal stick
+function _stick(c) {
+  for (let i = 0; i < 11; i++) {
+    _r(c, 18 - i * 2, 4 + i * 2, 3, 3, i % 2 === 0 ? '#b07830' : '#8a5820');
+  }
+}
+
+// tier material colors [main, hi, shadow]
+const _TC = [
+  ['#c8922a','#f0c860','#7a5810'], // wood
+  ['#909090','#cccccc','#565656'], // stone
+  ['#c0ccd8','#e8f0f8','#788898'], // iron
+  ['#30c8e0','#80f0ff','#1098a8'], // diamond
+];
+
+// draw a diagonal handle for tools
+function _handle(c) {
+  for (let i = 0; i < 9; i++) _r(c, 20-i*2, 10+i*2, 3, 3, i%2===0?'#b07830':'#8a5820');
+}
+
+function _pick(c, tier) {
+  const [m,h,s] = _TC[tier];
+  _handle(c);
+  _r(c,  1, 3, 18,  6, m); // head horizontal bar
+  _r(c,  1, 3,  5,  4, h); // left tip hi
+  _r(c,  1, 7,  5,  4, s); // left tip shadow
+  _r(c, 14, 2,  6,  3, h); // right tip
+  _r(c,  1, 3,  1, 10, s); // left edge dark
+}
+
+function _axe(c, tier) {
+  const [m,h,s] = _TC[tier];
+  _handle(c);
+  _r(c, 4,  2, 14,  5, m); // top blade
+  _r(c, 4,  7, 14,  5, m); // bottom blade
+  _r(c, 4,  2,  3, 10, h); // left hi
+  _r(c,16,  2,  3,  4, s); // top-right tip
+  _r(c, 4,  2, 14,  1, h); // top edge
+}
+
+function _shovel(c, tier) {
+  const [m,h,s] = _TC[tier];
+  _handle(c);
+  _r(c, 12, 2,  8, 10, m); // blade
+  _r(c, 12, 2,  2, 10, h); // left hi
+  _r(c, 18, 2,  2, 10, s); // right shadow
+  _r(c, 12, 11, 8,  2, s); // bottom tip
+}
+
+function _sword(c, tier) {
+  const [m,h,s] = _TC[tier];
+  // Blade diagonal
+  for (let i = 0; i < 10; i++) _r(c, 18-i*2, 2+i*2, 4, 4, i%2===0?m:h);
+  // Guard
+  _r(c, 4, 14, 16, 3, s);
+  _r(c, 4, 14, 16, 1, h);
+  // Handle
+  _r(c, 10, 17, 5, 8, '#8b5a2b');
+}
+
+const _BD = { // block icon definitions [top, left, right]
+  [BLOCK.GRASS]:          ['#6ec840','#907040','#6a4e20'],
+  [BLOCK.DIRT]:           ['#b08050','#8a6030','#6a4020'],
+  [BLOCK.STONE]:          ['#b0b0b0','#888888','#606060'],
+  [BLOCK.COBBLESTONE]:    ['#a0a0a0','#686868','#484848'],
+  [BLOCK.WOOD]:           ['#d0a050','#a07028','#785010'],
+  [BLOCK.LOG]:            ['#a87840','#785820','#584010'],
+  [BLOCK.LEAVES]:         ['#44c020','#28900a','#186808'],
+  [BLOCK.COAL_ORE]:       ['#888878','#505048','#383830'],
+  [BLOCK.IRON_ORE]:       ['#9a9070','#786858','#504838'],
+  [BLOCK.GOLD_ORE]:       ['#b0b060','#808020','#505000'],
+  [BLOCK.DIAMOND_ORE]:    ['#68b8c0','#208898','#106878'],
+  [BLOCK.CRAFTING_TABLE]: ['#d0a850','#905820','#704010'],
+  [BLOCK.FURNACE]:        ['#989088','#606858','#404840'],
+};
+
+function _drawItemIcon(c, id) {
+  if (_BD[id]) { const [t,l,r] = _BD[id]; _block3d(c,t,l,r); return; }
+  const I = ITEM_ID;
+  if      (id===I.COAL)       _gem(c,'#282820','#484838','#101008');
+  else if (id===I.RAW_IRON)   _gem(c,'#c07840','#e09860','#904820');
+  else if (id===I.RAW_GOLD)   _gem(c,'#d4a800','#f8d040','#a07000');
+  else if (id===I.DIAMOND)    _gem(c,'#18c8e0','#68e8f8','#1098a8');
+  else if (id===I.IRON_INGOT) _ingot(c,'#aaaaaa','#d4d4d4','#787878');
+  else if (id===I.GOLD_INGOT) _ingot(c,'#e8b800','#ffd840','#a07800');
+  else if (id===I.STICK)      _stick(c);
+  else if (id>=200&&id<210)   _pick(c, (id-200)%4);
+  else if (id>=210&&id<220)   _axe(c, (id-210)%4);
+  else if (id>=220&&id<230)   _shovel(c, (id-220)%4);
+  else if (id>=230&&id<240)   _sword(c, (id-230)%4);
+  else { _r(c,4,4,24,24, ITEM_COLOR[id]||'#888'); }
+}
+
 // ─── Drops ao partir um bloco ─────────────────────────────────────────────────
 const _DROPS = {
   [BLOCK.GRASS]:          () => [{ id: BLOCK.DIRT,          count:1 }],
