@@ -12,54 +12,35 @@ import { ITEM_ID } from './items.js';
 const B = BLOCK, I = ITEM_ID;
 
 // ─── Receitas ─────────────────────────────────────────────────────────────────
-// { grid: [[...rows...]], result: {id, count} }
-// Grelha é compactada antes de comparar.
-const RECIPES = [
-  // 1×1 — converte tronco em pranchas
-  { grid:[[B.LOG]],                result:{ id:B.WOOD,       count:4 } },
+export const RECIPES = [
+  { name:'Pranchas',          grid:[[B.LOG]],                                                                      result:{ id:B.WOOD,           count:4 } },
+  { name:'Paus (madeira)',    grid:[[B.WOOD],[B.WOOD]],                                                            result:{ id:I.STICK,           count:4 } },
+  { name:'Paus (tronco)',     grid:[[B.LOG],[B.LOG]],                                                              result:{ id:I.STICK,           count:4 } },
+  { name:'Bancada',           grid:[[B.WOOD,B.WOOD],[B.WOOD,B.WOOD]],                                             result:{ id:B.CRAFTING_TABLE,  count:1 } },
+  { name:'Lingote Ferro',     grid:[[I.RAW_IRON,I.COAL]],                                                         result:{ id:I.IRON_INGOT,      count:1 } },
+  { name:'Lingote Ouro',      grid:[[I.RAW_GOLD,I.COAL]],                                                         result:{ id:I.GOLD_INGOT,      count:1 } },
 
-  // 1×2 vertical — paus
-  { grid:[[B.WOOD],[B.WOOD]],      result:{ id:I.STICK,      count:4 } },
-  { grid:[[B.LOG],[B.LOG]],        result:{ id:I.STICK,      count:4 } },
+  { name:'Fornalha',          grid:[[B.COBBLESTONE,B.COBBLESTONE,B.COBBLESTONE],[B.COBBLESTONE,0,B.COBBLESTONE],[B.COBBLESTONE,B.COBBLESTONE,B.COBBLESTONE]], result:{ id:B.FURNACE, count:1 } },
 
-  // 2×2 — bancada
-  { grid:[[B.WOOD,B.WOOD],[B.WOOD,B.WOOD]], result:{ id:B.CRAFTING_TABLE, count:1 } },
+  { name:'Picareta Madeira',  grid:[[B.WOOD,B.WOOD,B.WOOD],[0,I.STICK,0],[0,I.STICK,0]],                         result:{ id:I.WOOD_PICK,       count:1 } },
+  { name:'Picareta Pedra',    grid:[[B.COBBLESTONE,B.COBBLESTONE,B.COBBLESTONE],[0,I.STICK,0],[0,I.STICK,0]],    result:{ id:I.STONE_PICK,      count:1 } },
+  { name:'Picareta Ferro',    grid:[[I.IRON_INGOT,I.IRON_INGOT,I.IRON_INGOT],[0,I.STICK,0],[0,I.STICK,0]],      result:{ id:I.IRON_PICK,       count:1 } },
+  { name:'Picareta Diamante', grid:[[I.DIAMOND,I.DIAMOND,I.DIAMOND],[0,I.STICK,0],[0,I.STICK,0]],                result:{ id:I.DIAMOND_PICK,    count:1 } },
 
-  // Fornalha (3×3) — 8 pedra partida em volta
-  {
-    grid:[[B.COBBLESTONE,B.COBBLESTONE,B.COBBLESTONE],
-          [B.COBBLESTONE,0,            B.COBBLESTONE],
-          [B.COBBLESTONE,B.COBBLESTONE,B.COBBLESTONE]],
-    result:{ id:B.FURNACE, count:1 },
-  },
+  { name:'Machado Madeira',   grid:[[B.WOOD,B.WOOD,0],[B.WOOD,I.STICK,0],[0,I.STICK,0]],                        result:{ id:I.WOOD_AXE,        count:1 } },
+  { name:'Machado Pedra',     grid:[[B.COBBLESTONE,B.COBBLESTONE,0],[B.COBBLESTONE,I.STICK,0],[0,I.STICK,0]],   result:{ id:I.STONE_AXE,       count:1 } },
+  { name:'Machado Ferro',     grid:[[I.IRON_INGOT,I.IRON_INGOT,0],[I.IRON_INGOT,I.STICK,0],[0,I.STICK,0]],     result:{ id:I.IRON_AXE,        count:1 } },
+  { name:'Machado Diamante',  grid:[[I.DIAMOND,I.DIAMOND,0],[I.DIAMOND,I.STICK,0],[0,I.STICK,0]],               result:{ id:I.DIAMOND_AXE,     count:1 } },
 
-  // ── Picaretas (3×3) ──────────────────────────────────────────────────────
-  { grid:[[B.WOOD,B.WOOD,B.WOOD],[0,I.STICK,0],[0,I.STICK,0]],  result:{ id:I.WOOD_PICK,    count:1 } },
-  { grid:[[B.COBBLESTONE,B.COBBLESTONE,B.COBBLESTONE],[0,I.STICK,0],[0,I.STICK,0]], result:{ id:I.STONE_PICK, count:1 } },
-  { grid:[[I.IRON_INGOT, I.IRON_INGOT, I.IRON_INGOT], [0,I.STICK,0],[0,I.STICK,0]], result:{ id:I.IRON_PICK,  count:1 } },
-  { grid:[[I.DIAMOND,    I.DIAMOND,    I.DIAMOND],    [0,I.STICK,0],[0,I.STICK,0]], result:{ id:I.DIAMOND_PICK,count:1 } },
+  { name:'Pá Madeira',        grid:[[0,B.WOOD,0],[0,I.STICK,0],[0,I.STICK,0]],                                  result:{ id:I.WOOD_SHOVEL,     count:1 } },
+  { name:'Pá Pedra',          grid:[[0,B.COBBLESTONE,0],[0,I.STICK,0],[0,I.STICK,0]],                           result:{ id:I.STONE_SHOVEL,    count:1 } },
+  { name:'Pá Ferro',          grid:[[0,I.IRON_INGOT,0],[0,I.STICK,0],[0,I.STICK,0]],                            result:{ id:I.IRON_SHOVEL,     count:1 } },
+  { name:'Pá Diamante',       grid:[[0,I.DIAMOND,0],[0,I.STICK,0],[0,I.STICK,0]],                               result:{ id:I.DIAMOND_SHOVEL,  count:1 } },
 
-  // ── Machados (3×3) ───────────────────────────────────────────────────────
-  { grid:[[B.WOOD,B.WOOD,0],[B.WOOD,I.STICK,0],[0,I.STICK,0]],              result:{ id:I.WOOD_AXE,    count:1 } },
-  { grid:[[B.COBBLESTONE,B.COBBLESTONE,0],[B.COBBLESTONE,I.STICK,0],[0,I.STICK,0]], result:{ id:I.STONE_AXE,  count:1 } },
-  { grid:[[I.IRON_INGOT, I.IRON_INGOT, 0],[I.IRON_INGOT, I.STICK, 0],[0,I.STICK,0]], result:{ id:I.IRON_AXE,   count:1 } },
-  { grid:[[I.DIAMOND,I.DIAMOND,0],[I.DIAMOND,I.STICK,0],[0,I.STICK,0]],     result:{ id:I.DIAMOND_AXE, count:1 } },
-
-  // ── Pás (3×3) ────────────────────────────────────────────────────────────
-  { grid:[[0,B.WOOD,0],[0,I.STICK,0],[0,I.STICK,0]],             result:{ id:I.WOOD_SHOVEL,    count:1 } },
-  { grid:[[0,B.COBBLESTONE,0],[0,I.STICK,0],[0,I.STICK,0]],      result:{ id:I.STONE_SHOVEL,   count:1 } },
-  { grid:[[0,I.IRON_INGOT,0],[0,I.STICK,0],[0,I.STICK,0]],       result:{ id:I.IRON_SHOVEL,    count:1 } },
-  { grid:[[0,I.DIAMOND,0],[0,I.STICK,0],[0,I.STICK,0]],          result:{ id:I.DIAMOND_SHOVEL, count:1 } },
-
-  // ── Espadas (3×3, mas cabem em 1×3) ──────────────────────────────────────
-  { grid:[[B.WOOD],[B.WOOD],[I.STICK]],             result:{ id:I.WOOD_SWORD,    count:1 } },
-  { grid:[[B.COBBLESTONE],[B.COBBLESTONE],[I.STICK]],result:{ id:I.STONE_SWORD,  count:1 } },
-  { grid:[[I.IRON_INGOT],[I.IRON_INGOT],[I.STICK]], result:{ id:I.IRON_SWORD,    count:1 } },
-  { grid:[[I.DIAMOND],[I.DIAMOND],[I.STICK]],        result:{ id:I.DIAMOND_SWORD, count:1 } },
-
-  // Smelting simplificado (sem fornalha): matéria + carvão → lingote
-  { grid:[[I.RAW_IRON, I.COAL]], result:{ id:I.IRON_INGOT, count:1 } },
-  { grid:[[I.RAW_GOLD, I.COAL]], result:{ id:I.GOLD_INGOT, count:1 } },
+  { name:'Espada Madeira',    grid:[[B.WOOD],[B.WOOD],[I.STICK]],                                                result:{ id:I.WOOD_SWORD,      count:1 } },
+  { name:'Espada Pedra',      grid:[[B.COBBLESTONE],[B.COBBLESTONE],[I.STICK]],                                  result:{ id:I.STONE_SWORD,     count:1 } },
+  { name:'Espada Ferro',      grid:[[I.IRON_INGOT],[I.IRON_INGOT],[I.STICK]],                                   result:{ id:I.IRON_SWORD,      count:1 } },
+  { name:'Espada Diamante',   grid:[[I.DIAMOND],[I.DIAMOND],[I.STICK]],                                          result:{ id:I.DIAMOND_SWORD,   count:1 } },
 ];
 
 // ─── Receitas da fornalha ─────────────────────────────────────────────────────

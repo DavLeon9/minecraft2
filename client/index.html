@@ -25,17 +25,15 @@
     #nick-input { width:100%; padding:11px 14px; font-size:1rem; font-family:'Courier New',monospace; background:#111; border:2px solid #444; border-radius:3px; color:#eee; outline:none; transition:border-color .15s; }
     #nick-input:focus { border-color:#5a9e3c; }
     #nick-input.error { border-color:#e53935; }
-    #nick-input.valid { border-color:#5a9e3c; }
     #nick-error { display:block; min-height:18px; margin-top:6px; font-size:.72rem; color:#e53935; text-align:left; }
-    #btn-enter { margin-top:22px; width:100%; padding:13px; font-family:'Press Start 2P',monospace; font-size:.72rem; background:#4a7a2a; border:none; border-bottom:4px solid #2a4a10; border-radius:3px; color:#fff; cursor:pointer; transition:background .12s,transform .08s; }
+    #btn-enter { margin-top:22px; width:100%; padding:13px; font-family:'Press Start 2P',monospace; font-size:.72rem; background:#4a7a2a; border:none; border-bottom:4px solid #2a4a10; border-radius:3px; color:#fff; cursor:pointer; }
     #btn-enter:hover:not(:disabled) { background:#5a9e3c; }
-    #btn-enter:active:not(:disabled) { transform:translateY(2px); border-bottom-width:2px; }
     #btn-enter:disabled { background:#333; border-bottom-color:#222; color:#666; cursor:not-allowed; }
     .login-hint { margin-top:14px; font-size:.65rem; color:#555; }
 
     /* ── PAUSA ─────────────────────────────────────────────────────── */
     #overlay { position:fixed; inset:0; background:rgba(0,0,0,.52); display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px; color:#fff; z-index:10; pointer-events:none; }
-    .pause-card { background:rgba(8,8,8,.92); border:3px solid #4a8a4a; border-top:4px solid #5a9e3c; border-bottom:4px solid #1a3a10; border-radius:4px; padding:28px 48px 32px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:14px; pointer-events:all; box-shadow:0 6px 28px rgba(0,0,0,.7); }
+    .pause-card { background:rgba(8,8,8,.92); border:3px solid #4a8a4a; border-top:4px solid #5a9e3c; border-bottom:4px solid #1a3a10; border-radius:4px; padding:28px 48px 32px; text-align:center; display:flex; flex-direction:column; align-items:center; gap:14px; pointer-events:all; }
     .pause-card h2 { font-family:'Press Start 2P',monospace; font-size:1.1rem; color:#5a9e3c; text-shadow:2px 2px 0 #1a4a1a; }
     #overlay-msg { font-size:.78rem; opacity:.6; }
     #btn-play { padding:12px 36px; font-family:'Press Start 2P',monospace; font-size:.68rem; background:#4a7a2a; border:none; border-bottom:4px solid #2a4a10; border-radius:3px; color:#fff; cursor:pointer; display:none; pointer-events:all; }
@@ -52,95 +50,155 @@
 
     /* Hotbar */
     #hotbar { position:absolute; bottom:24px; left:50%; transform:translateX(-50%); display:flex; gap:4px; z-index:15; pointer-events:all; }
-    .slot { width:54px; height:54px; border:2px solid rgba(255,255,255,.35); border-radius:4px; background:rgba(0,0,0,.55); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:8px; opacity:.82; transition:border-color .1s; cursor:pointer; position:relative; }
+    .slot { width:58px; height:58px; border:2px solid rgba(255,255,255,.35); border-radius:4px; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; opacity:.82; cursor:pointer; position:relative; image-rendering:pixelated; transition:border-color .1s; }
     .slot:hover { opacity:1; border-color:rgba(255,255,255,.6); }
     .slot.active { border-color:#fff; opacity:1; border-width:3px; }
-    .slot-swatch { width:32px; height:32px; border-radius:2px; image-rendering:pixelated; }
-    .slot-label { font-size:7px; color:#ccc; text-shadow:1px 1px 0 #000; }
-    .slot .slot-icon { font-size:16px; line-height:1; }
-    .slot .slot-qty { position:absolute; bottom:2px; right:4px; font-size:9px; font-weight:bold; text-shadow:1px 1px 0 #000; color:#fff; }
+    .slot .slot-qty { position:absolute; bottom:2px; right:4px; font-size:10px; font-weight:bold; text-shadow:1px 1px 0 #000; color:#fff; }
 
     #info { position:absolute; top:8px; left:8px; font-size:11px; line-height:1.7; text-shadow:1px 1px 0 #000; }
-    #controls-hint { position:absolute; bottom:88px; right:10px; font-size:10px; opacity:.42; text-align:right; line-height:1.8; }
+    #controls-hint { position:absolute; bottom:96px; right:10px; font-size:10px; opacity:.42; text-align:right; line-height:1.8; }
     #info-nick { position:absolute; top:8px; right:10px; font-size:11px; opacity:.7; text-shadow:1px 1px 0 #000; }
 
     /* ── INVENTÁRIO ────────────────────────────────────────────────── */
     #inventory-screen {
       position:fixed; inset:0; z-index:20;
-      background:rgba(0,0,0,.72);
+      background:rgba(0,0,0,.78);
       display:none; align-items:center; justify-content:center;
     }
     #inventory-screen.open { display:flex; }
 
     .inv-panel {
-      background:#2a2a2a;
-      border:3px solid #555;
+      background:#1e1e1e;
+      border:3px solid #4a4a4a;
+      border-top:4px solid #606060;
+      border-bottom:4px solid #111;
       border-radius:6px;
-      padding:16px 20px 20px;
-      width:560px; max-width:98vw;
-      max-height:95vh; overflow-y:auto;
-      box-shadow:0 8px 40px rgba(0,0,0,.9);
+      padding:18px 20px 20px;
+      max-width:98vw; max-height:96vh;
+      overflow-y:auto;
+      box-shadow:0 12px 60px rgba(0,0,0,.95);
     }
+    .inv-layout { display:flex; gap:14px; align-items:flex-start; }
+
+    /* Coluna esquerda — crafting + armazenamento */
+    .inv-main { flex:1; min-width:0; }
+
     .inv-title {
-      font-family:'Press Start 2P',monospace; font-size:.75rem; color:#ccc;
-      margin-bottom:14px; text-align:center;
+      font-family:'Press Start 2P',monospace; font-size:.8rem; color:#ccc;
+      margin-bottom:14px; text-align:center; letter-spacing:.05em;
     }
 
     /* Tabs */
-    .craft-tabs { display:flex; gap:6px; margin-bottom:12px; }
-    .craft-tab { flex:1; padding:7px; font-family:'Press Start 2P',monospace; font-size:.55rem; background:#333; border:2px solid #555; border-radius:4px; color:#aaa; cursor:pointer; text-align:center; }
-    .craft-tab:hover { background:#444; color:#fff; }
-    .craft-tab.active { background:#4a7a2a; border-color:#5a9e3c; color:#fff; }
+    .craft-tabs { display:flex; gap:5px; margin-bottom:12px; }
+    .craft-tab { flex:1; padding:8px 4px; font-family:'Press Start 2P',monospace; font-size:.5rem; background:#2a2a2a; border:2px solid #4a4a4a; border-radius:4px; color:#999; cursor:pointer; text-align:center; white-space:nowrap; }
+    .craft-tab:hover { background:#3a3a3a; color:#fff; }
+    .craft-tab.active { background:#3a5a1a; border-color:#5a9e3c; color:#fff; }
 
-    /* Craft areas */
-    .craft-panel { margin-bottom:14px; }
-    .craft-row { display:flex; align-items:center; gap:10px; }
-    .craft-grid { display:grid; gap:3px; }
-    .craft-grid.size2 { grid-template-columns:repeat(2,40px); }
-    .craft-grid.size3 { grid-template-columns:repeat(3,40px); }
-    .craft-arrow { font-size:22px; color:#888; margin:0 4px; }
-    .craft-result { width:44px; height:44px; }
-
-    /* Inventory slots */
-    .inv-section { margin-bottom:10px; }
-    .inv-section-label { font-size:9px; color:#888; margin-bottom:5px; }
-    .inv-grid { display:grid; grid-template-columns:repeat(9,44px); gap:3px; }
-    .inv-grid.hotbar-row { margin-top:6px; border-top:2px solid #444; padding-top:8px; }
-
-    /* Individual slot */
-    .inv-slot {
-      width:40px; height:40px;
-      border:2px solid #555; border-radius:3px;
-      background:#1a1a1a;
-      cursor:pointer; position:relative;
-      display:flex; align-items:center; justify-content:center;
-      font-size:18px;
-      image-rendering:pixelated;
-      transition:border-color .1s;
-    }
-    .inv-slot:hover { border-color:#aaa; }
-    .inv-slot.result { border-color:#5a9e3c; width:44px; height:44px; background:#111; }
-    .inv-slot .slot-qty {
-      position:absolute; bottom:1px; right:2px;
-      font-size:9px; font-weight:bold; color:#fff; text-shadow:1px 1px 0 #000;
-    }
-    .inv-slot .slot-icon { font-size:20px; line-height:1; pointer-events:none; }
+    /* Craft area */
+    .craft-panel { margin-bottom:14px; background:#161616; border:2px solid #333; border-radius:4px; padding:12px; }
+    .craft-row { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .craft-grid { display:grid; gap:4px; }
+    .craft-grid.size2 { grid-template-columns:repeat(2,54px); }
+    .craft-grid.size3 { grid-template-columns:repeat(3,54px); }
+    .craft-arrow { font-size:24px; color:#666; margin:0 4px; }
+    .craft-hint { font-size:8px; color:#555; margin-top:8px; }
 
     /* Fornalha */
-    .furnace-layout { display:flex; align-items:center; gap:12px; }
-    .furnace-col { display:flex; flex-direction:column; gap:6px; }
-    .furnace-label { font-size:8px; color:#888; text-align:center; }
-    #smelt-btn { padding:8px 12px; font-family:'Press Start 2P',monospace; font-size:.5rem; background:#8b4a00; border:2px solid #aa6600; border-radius:3px; color:#fff; cursor:pointer; }
+    .furnace-layout { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+    .furnace-col { display:flex; flex-direction:column; gap:6px; align-items:center; }
+    .furnace-label { font-size:8px; color:#777; text-align:center; }
+    #smelt-btn { padding:9px 14px; font-family:'Press Start 2P',monospace; font-size:.5rem; background:#8b4a00; border:2px solid #aa6600; border-bottom:3px solid #5a2a00; border-radius:3px; color:#fff; cursor:pointer; }
     #smelt-btn:hover { background:#aa6600; }
+
+    /* Inventory / hotbar grids */
+    .inv-section { margin-bottom:10px; }
+    .inv-section-label { font-size:9px; color:#666; margin-bottom:5px; letter-spacing:.06em; }
+    .inv-grid { display:grid; grid-template-columns:repeat(9,54px); gap:3px; }
+    .inv-grid.hotbar-row { margin-top:8px; border-top:2px solid #333; padding-top:10px; }
+
+    /* Slot individual */
+    .inv-slot {
+      width:54px; height:54px;
+      border:2px solid #3a3a3a; border-radius:3px;
+      background:#111;
+      cursor:pointer; position:relative;
+      display:flex; align-items:center; justify-content:center;
+      image-rendering:pixelated;
+      transition:border-color .08s, background .08s;
+    }
+    .inv-slot:hover { border-color:#888; background:#1a1a1a; }
+    .inv-slot.result { border-color:#4a8a2a; width:60px; height:60px; background:#0d0d0d; }
+    .inv-slot.result:hover { border-color:#7acc3a; }
+    .inv-slot .slot-qty {
+      position:absolute; bottom:2px; right:3px;
+      font-size:10px; font-weight:bold; color:#fff; text-shadow:1px 1px 0 #000;
+      pointer-events:none;
+    }
+
+    /* ── LIVRO DE RECEITAS ─────────────────────────────────────── */
+    .inv-recipes {
+      width:300px; flex-shrink:0;
+      background:#161616; border:2px solid #3a3a3a; border-radius:5px;
+      padding:10px 8px 10px;
+      max-height:80vh; overflow-y:auto;
+      overflow-x:hidden;
+    }
+    .inv-recipes::-webkit-scrollbar { width:6px; }
+    .inv-recipes::-webkit-scrollbar-track { background:#111; border-radius:3px; }
+    .inv-recipes::-webkit-scrollbar-thumb { background:#444; border-radius:3px; }
+    .recipe-book-title {
+      font-family:'Press Start 2P',monospace; font-size:.52rem;
+      color:#8bc34a; margin-bottom:10px; text-align:center;
+      padding-bottom:8px; border-bottom:1px solid #333;
+    }
+
+    /* Recipe cards */
+    .recipe-card {
+      display:flex; align-items:center; gap:6px;
+      padding:6px 8px; margin-bottom:3px;
+      background:#0e0e0e; border:2px solid #2a2a2a; border-radius:3px;
+      cursor:default; transition:border-color .08s, background .08s;
+      min-height:44px;
+    }
+    .recipe-card.has-mats { border-color:#2a4a10; cursor:pointer; }
+    .recipe-card.has-mats:hover { border-color:#5a9e3c; background:#0a150a; }
+
+    .rec-grid { display:grid; gap:1px; flex-shrink:0; }
+    .rec-grid.s1 { grid-template-columns:repeat(1,20px); }
+    .rec-grid.s2 { grid-template-columns:repeat(2,20px); }
+    .rec-grid.s3 { grid-template-columns:repeat(3,20px); }
+    .rec-slot {
+      width:20px; height:20px; background:#1a1a1a;
+      border:1px solid #333;
+      image-rendering:pixelated;
+      background-size:100% 100%; background-repeat:no-repeat;
+    }
+    .rec-arrow { color:#555; font-size:13px; flex-shrink:0; }
+    .rec-result { position:relative; flex-shrink:0; }
+    .rec-result-slot {
+      width:28px; height:28px; background:#1a1a1a;
+      border:2px solid #3a6a1a; border-radius:2px;
+      image-rendering:pixelated;
+      background-size:90% 90%; background-repeat:no-repeat; background-position:center;
+    }
+    .rec-count {
+      position:absolute; bottom:-3px; right:-3px;
+      font-size:8px; font-weight:bold; color:#fff; text-shadow:1px 1px 0 #000;
+      pointer-events:none;
+    }
+    .rec-info { flex:1; min-width:0; }
+    .rec-name { font-size:7px; color:#777; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .rec-tag { font-size:6px; color:#4a6a2a; margin-top:2px; }
 
     /* Cursor segurado */
     #cursor-item {
-      position:fixed; z-index:99; width:40px; height:40px;
-      border:2px solid #aaa; border-radius:3px;
+      position:fixed; z-index:99; width:52px; height:52px;
+      border:2px solid #888; border-radius:3px;
       display:none; align-items:center; justify-content:center;
-      pointer-events:none; font-size:18px;
+      pointer-events:none; image-rendering:pixelated;
+      background-size:78% 78%; background-repeat:no-repeat; background-position:center;
     }
-    #cursor-item .slot-qty { position:absolute; bottom:1px; right:2px; font-size:9px; font-weight:bold; color:#fff; text-shadow:1px 1px 0 #000; }
+    #cursor-item .slot-qty { position:absolute; bottom:2px; right:3px; font-size:10px; font-weight:bold; color:#fff; text-shadow:1px 1px 0 #000; }
   </style>
 </head>
 <body>
@@ -154,7 +212,7 @@
     <input type="text" id="nick-input" placeholder="ex: Steve_123" maxlength="16" autocomplete="off" spellcheck="false"/>
     <span id="nick-error"></span>
     <button id="btn-enter">▶ ENTRAR NO MUNDO</button>
-    <p class="login-hint" style="margin-top:14px;font-size:.65rem;color:#555;">2–16 chars · letras, números e _</p>
+    <p class="login-hint">2–16 chars · letras, números e _</p>
   </div>
 </div>
 
@@ -173,15 +231,15 @@
   <div id="break-progress"><div id="break-fill"></div></div>
 
   <div id="hotbar">
-    <div class="slot active" data-slot="0"><div class="slot-swatch"></div></div>
-    <div class="slot" data-slot="1"><div class="slot-swatch"></div></div>
-    <div class="slot" data-slot="2"><div class="slot-swatch"></div></div>
-    <div class="slot" data-slot="3"><div class="slot-swatch"></div></div>
-    <div class="slot" data-slot="4"><div class="slot-swatch"></div></div>
-    <div class="slot" data-slot="5"><div class="slot-swatch"></div></div>
-    <div class="slot" data-slot="6"><div class="slot-swatch"></div></div>
-    <div class="slot" data-slot="7"><div class="slot-swatch"></div></div>
-    <div class="slot" data-slot="8"><div class="slot-swatch"></div></div>
+    <div class="slot active" data-slot="0"></div>
+    <div class="slot" data-slot="1"></div>
+    <div class="slot" data-slot="2"></div>
+    <div class="slot" data-slot="3"></div>
+    <div class="slot" data-slot="4"></div>
+    <div class="slot" data-slot="5"></div>
+    <div class="slot" data-slot="6"></div>
+    <div class="slot" data-slot="7"></div>
+    <div class="slot" data-slot="8"></div>
   </div>
 
   <div id="info">
@@ -205,122 +263,134 @@
 <!-- ── INVENTÁRIO ─────────────────────────────────────────────────────── -->
 <div id="inventory-screen">
   <div class="inv-panel">
-    <div class="inv-title">MINECRAFT 2 — INVENTÁRIO</div>
+    <div class="inv-layout">
 
-    <!-- Tabs -->
-    <div class="craft-tabs">
-      <button class="craft-tab active" data-mode="inventory">🎒 Crafting 2×2</button>
-      <button class="craft-tab" data-mode="crafting">🪓 Bancada 3×3</button>
-      <button class="craft-tab" data-mode="furnace">🔥 Fornalha</button>
-    </div>
+      <!-- ── Coluna principal ── -->
+      <div class="inv-main">
+        <div class="inv-title">⛏ MINECRAFT 2</div>
 
-    <!-- Painel 2×2 -->
-    <div class="craft-panel" id="panel-inventory">
-      <div class="craft-row">
-        <div class="craft-grid size2">
-          <div class="inv-slot" data-area="craft2" data-idx="0"></div>
-          <div class="inv-slot" data-area="craft2" data-idx="1"></div>
-          <div class="inv-slot" data-area="craft2" data-idx="2"></div>
-          <div class="inv-slot" data-area="craft2" data-idx="3"></div>
+        <!-- Tabs -->
+        <div class="craft-tabs">
+          <button class="craft-tab active" data-mode="inventory">✋ Crafting 2×2</button>
+          <button class="craft-tab" data-mode="crafting">🪓 Bancada 3×3</button>
+          <button class="craft-tab" data-mode="furnace">🔥 Fornalha</button>
         </div>
-        <div class="craft-arrow">→</div>
-        <div class="inv-slot result" id="craft-result-slot"></div>
-      </div>
-    </div>
 
-    <!-- Painel 3×3 -->
-    <div class="craft-panel" id="panel-crafting" style="display:none">
-      <div class="craft-row">
-        <div class="craft-grid size3">
-          <div class="inv-slot" data-area="craft3" data-idx="0"></div>
-          <div class="inv-slot" data-area="craft3" data-idx="1"></div>
-          <div class="inv-slot" data-area="craft3" data-idx="2"></div>
-          <div class="inv-slot" data-area="craft3" data-idx="3"></div>
-          <div class="inv-slot" data-area="craft3" data-idx="4"></div>
-          <div class="inv-slot" data-area="craft3" data-idx="5"></div>
-          <div class="inv-slot" data-area="craft3" data-idx="6"></div>
-          <div class="inv-slot" data-area="craft3" data-idx="7"></div>
-          <div class="inv-slot" data-area="craft3" data-idx="8"></div>
+        <!-- Painel 2×2 -->
+        <div class="craft-panel" id="panel-inventory">
+          <div class="craft-row">
+            <div class="craft-grid size2">
+              <div class="inv-slot" data-area="craft2" data-idx="0"></div>
+              <div class="inv-slot" data-area="craft2" data-idx="1"></div>
+              <div class="inv-slot" data-area="craft2" data-idx="2"></div>
+              <div class="inv-slot" data-area="craft2" data-idx="3"></div>
+            </div>
+            <div class="craft-arrow">→</div>
+            <div class="inv-slot result" id="craft-result-2"></div>
+          </div>
         </div>
-        <div class="craft-arrow">→</div>
-        <div class="inv-slot result" id="craft-result-slot"></div>
-      </div>
-      <p style="font-size:9px;color:#777;margin-top:8px;">Precisas de ter uma Bancada colocada e clicar nela com RMB para usar este painel.</p>
-    </div>
 
-    <!-- Painel Fornalha -->
-    <div class="craft-panel" id="panel-furnace" style="display:none">
-      <div class="furnace-layout">
-        <div class="furnace-col">
-          <div class="furnace-label">Ingrediente</div>
-          <div class="inv-slot" data-area="furnace" data-idx="0"></div>
+        <!-- Painel 3×3 -->
+        <div class="craft-panel" id="panel-crafting" style="display:none">
+          <div class="craft-row">
+            <div class="craft-grid size3">
+              <div class="inv-slot" data-area="craft3" data-idx="0"></div>
+              <div class="inv-slot" data-area="craft3" data-idx="1"></div>
+              <div class="inv-slot" data-area="craft3" data-idx="2"></div>
+              <div class="inv-slot" data-area="craft3" data-idx="3"></div>
+              <div class="inv-slot" data-area="craft3" data-idx="4"></div>
+              <div class="inv-slot" data-area="craft3" data-idx="5"></div>
+              <div class="inv-slot" data-area="craft3" data-idx="6"></div>
+              <div class="inv-slot" data-area="craft3" data-idx="7"></div>
+              <div class="inv-slot" data-area="craft3" data-idx="8"></div>
+            </div>
+            <div class="craft-arrow">→</div>
+            <div class="inv-slot result" id="craft-result-3"></div>
+          </div>
+          <p class="craft-hint">Precisa de ter uma Bancada colocada e clicar nela (RMB)</p>
         </div>
-        <div class="furnace-col">
-          <div class="furnace-label">Combustível</div>
-          <div class="inv-slot" data-area="furnace" data-idx="1"></div>
-        </div>
-        <div class="craft-arrow">🔥</div>
-        <button id="smelt-btn">FUNDIR</button>
-        <div class="craft-arrow">→</div>
-        <div class="furnace-col">
-          <div class="furnace-label">Resultado</div>
-          <div class="inv-slot result" id="smelt-result-slot"></div>
-        </div>
-      </div>
-      <p style="font-size:9px;color:#777;margin-top:8px;">Coloca ferro/ouro bruto + carvão e clica FUNDIR. Precisas ter uma Fornalha colocada.</p>
-    </div>
 
-    <!-- Armazenamento -->
-    <div class="inv-section">
-      <div class="inv-section-label">ARMAZENAMENTO</div>
-      <div class="inv-grid">
-        <!-- slots 9-35 -->
-        <div class="inv-slot" data-area="inv" data-idx="9"></div>
-        <div class="inv-slot" data-area="inv" data-idx="10"></div>
-        <div class="inv-slot" data-area="inv" data-idx="11"></div>
-        <div class="inv-slot" data-area="inv" data-idx="12"></div>
-        <div class="inv-slot" data-area="inv" data-idx="13"></div>
-        <div class="inv-slot" data-area="inv" data-idx="14"></div>
-        <div class="inv-slot" data-area="inv" data-idx="15"></div>
-        <div class="inv-slot" data-area="inv" data-idx="16"></div>
-        <div class="inv-slot" data-area="inv" data-idx="17"></div>
-        <div class="inv-slot" data-area="inv" data-idx="18"></div>
-        <div class="inv-slot" data-area="inv" data-idx="19"></div>
-        <div class="inv-slot" data-area="inv" data-idx="20"></div>
-        <div class="inv-slot" data-area="inv" data-idx="21"></div>
-        <div class="inv-slot" data-area="inv" data-idx="22"></div>
-        <div class="inv-slot" data-area="inv" data-idx="23"></div>
-        <div class="inv-slot" data-area="inv" data-idx="24"></div>
-        <div class="inv-slot" data-area="inv" data-idx="25"></div>
-        <div class="inv-slot" data-area="inv" data-idx="26"></div>
-        <div class="inv-slot" data-area="inv" data-idx="27"></div>
-        <div class="inv-slot" data-area="inv" data-idx="28"></div>
-        <div class="inv-slot" data-area="inv" data-idx="29"></div>
-        <div class="inv-slot" data-area="inv" data-idx="30"></div>
-        <div class="inv-slot" data-area="inv" data-idx="31"></div>
-        <div class="inv-slot" data-area="inv" data-idx="32"></div>
-        <div class="inv-slot" data-area="inv" data-idx="33"></div>
-        <div class="inv-slot" data-area="inv" data-idx="34"></div>
-        <div class="inv-slot" data-area="inv" data-idx="35"></div>
-      </div>
-    </div>
+        <!-- Painel Fornalha -->
+        <div class="craft-panel" id="panel-furnace" style="display:none">
+          <div class="furnace-layout">
+            <div class="furnace-col">
+              <div class="furnace-label">Ingrediente</div>
+              <div class="inv-slot" data-area="furnace" data-idx="0"></div>
+            </div>
+            <div class="furnace-col">
+              <div class="furnace-label">Combustível</div>
+              <div class="inv-slot" data-area="furnace" data-idx="1"></div>
+            </div>
+            <div class="craft-arrow">🔥</div>
+            <button id="smelt-btn">FUNDIR</button>
+            <div class="craft-arrow">→</div>
+            <div class="furnace-col">
+              <div class="furnace-label">Resultado</div>
+              <div class="inv-slot result" id="smelt-result-slot"></div>
+            </div>
+          </div>
+          <p class="craft-hint">Precisas ter uma Fornalha colocada (RMB nela)</p>
+        </div>
 
-    <!-- Hotbar dentro do inventário -->
-    <div class="inv-section">
-      <div class="inv-section-label">HOTBAR</div>
-      <div class="inv-grid hotbar-row">
-        <div class="inv-slot" data-area="inv" data-idx="0"></div>
-        <div class="inv-slot" data-area="inv" data-idx="1"></div>
-        <div class="inv-slot" data-area="inv" data-idx="2"></div>
-        <div class="inv-slot" data-area="inv" data-idx="3"></div>
-        <div class="inv-slot" data-area="inv" data-idx="4"></div>
-        <div class="inv-slot" data-area="inv" data-idx="5"></div>
-        <div class="inv-slot" data-area="inv" data-idx="6"></div>
-        <div class="inv-slot" data-area="inv" data-idx="7"></div>
-        <div class="inv-slot" data-area="inv" data-idx="8"></div>
+        <!-- Armazenamento -->
+        <div class="inv-section">
+          <div class="inv-section-label">MOCHILA</div>
+          <div class="inv-grid">
+            <div class="inv-slot" data-area="inv" data-idx="9"></div>
+            <div class="inv-slot" data-area="inv" data-idx="10"></div>
+            <div class="inv-slot" data-area="inv" data-idx="11"></div>
+            <div class="inv-slot" data-area="inv" data-idx="12"></div>
+            <div class="inv-slot" data-area="inv" data-idx="13"></div>
+            <div class="inv-slot" data-area="inv" data-idx="14"></div>
+            <div class="inv-slot" data-area="inv" data-idx="15"></div>
+            <div class="inv-slot" data-area="inv" data-idx="16"></div>
+            <div class="inv-slot" data-area="inv" data-idx="17"></div>
+            <div class="inv-slot" data-area="inv" data-idx="18"></div>
+            <div class="inv-slot" data-area="inv" data-idx="19"></div>
+            <div class="inv-slot" data-area="inv" data-idx="20"></div>
+            <div class="inv-slot" data-area="inv" data-idx="21"></div>
+            <div class="inv-slot" data-area="inv" data-idx="22"></div>
+            <div class="inv-slot" data-area="inv" data-idx="23"></div>
+            <div class="inv-slot" data-area="inv" data-idx="24"></div>
+            <div class="inv-slot" data-area="inv" data-idx="25"></div>
+            <div class="inv-slot" data-area="inv" data-idx="26"></div>
+            <div class="inv-slot" data-area="inv" data-idx="27"></div>
+            <div class="inv-slot" data-area="inv" data-idx="28"></div>
+            <div class="inv-slot" data-area="inv" data-idx="29"></div>
+            <div class="inv-slot" data-area="inv" data-idx="30"></div>
+            <div class="inv-slot" data-area="inv" data-idx="31"></div>
+            <div class="inv-slot" data-area="inv" data-idx="32"></div>
+            <div class="inv-slot" data-area="inv" data-idx="33"></div>
+            <div class="inv-slot" data-area="inv" data-idx="34"></div>
+            <div class="inv-slot" data-area="inv" data-idx="35"></div>
+          </div>
+        </div>
+
+        <!-- Hotbar dentro do inventário -->
+        <div class="inv-section">
+          <div class="inv-section-label">HOTBAR</div>
+          <div class="inv-grid hotbar-row">
+            <div class="inv-slot" data-area="inv" data-idx="0"></div>
+            <div class="inv-slot" data-area="inv" data-idx="1"></div>
+            <div class="inv-slot" data-area="inv" data-idx="2"></div>
+            <div class="inv-slot" data-area="inv" data-idx="3"></div>
+            <div class="inv-slot" data-area="inv" data-idx="4"></div>
+            <div class="inv-slot" data-area="inv" data-idx="5"></div>
+            <div class="inv-slot" data-area="inv" data-idx="6"></div>
+            <div class="inv-slot" data-area="inv" data-idx="7"></div>
+            <div class="inv-slot" data-area="inv" data-idx="8"></div>
+          </div>
+        </div>
+      </div><!-- fim .inv-main -->
+
+      <!-- ── Livro de Receitas ── -->
+      <div class="inv-recipes">
+        <div class="recipe-book-title">📖 LIVRO DE RECEITAS</div>
+        <div id="recipe-list"></div>
       </div>
-    </div>
-  </div>
+
+    </div><!-- fim .inv-layout -->
+  </div><!-- fim .inv-panel -->
 </div>
 
 <!-- Item segurado pelo cursor -->

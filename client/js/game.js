@@ -8,7 +8,7 @@ import { HandRenderer }          from './handRenderer.js';
 import { Inventory }             from './inventory.js';
 import { PLAYER_EYE_Y, BLOCK }   from './constants.js';
 import { ITEM_ID, getItemInfo, ITEM_COLOR, ITEM_ICON, isBlockItem, getItemIconDataUrl } from './items.js';
-import { matchRecipe, consumeIngredients, SMELT_RECIPES } from './crafting.js';
+import { matchRecipe, consumeIngredients, SMELT_RECIPES, RECIPES } from './crafting.js';
 
 // ─── Utilidade de display de slot ─────────────────────────────────────────────
 function renderSlotEl(el, item) {
@@ -130,7 +130,7 @@ export class Game {
       });
 
       // Inventory callback
-      this.inventory.onChanged = () => this._renderInventoryUI();
+      this.inventory.onChanged = () => { this._renderInventoryUI(); this._renderRecipeBook(); };
 
       this.ready = true;
     });
@@ -185,8 +185,11 @@ export class Game {
     // Click ESQUERDO: pegar stack inteira / colocar stack inteira / trocar
     document.addEventListener('click', e => {
       if (!this._invOpen || e.button !== 0) return;
-      if (e.target.closest('#craft-result-slot,#smelt-result-slot')) {
+      if (e.target.closest('#craft-result-2,#craft-result-3')) {
         this._takeCraftResult(); return;
+      }
+      if (e.target.closest('#smelt-result-slot')) {
+        this._takeSmeltResult(); return;
       }
       const slot = e.target.closest('.inv-slot');
       if (!slot) return;
@@ -237,6 +240,7 @@ export class Game {
     scr.classList.add('open');
     this._switchCraftMode(mode);
     this._renderInventoryUI();
+    this._renderRecipeBook();
     document.getElementById('overlay').style.display = 'none';
   }
 
@@ -334,30 +338,43 @@ export class Game {
   }
 
   _takeCraftResult() {
-    const slots = this._craftMode==='crafting' ? this._craftSlots3 : this._craftSlots;
-    const grid  = this._craftMode==='crafting'
-      ? [[slots[0],slots[1],slots[2]],[slots[3],slots[4],slots[5]],[slots[6],slots[7],slots[8]]].map(r=>r.map(s=>s?.id||0))
-      : [[slots[0],slots[1]],[slots[2],slots[3]]].map(r=>r.map(s=>s?.id||0));
-    const result = matchRecipe(grid);
-    if (!result) return;
-    consumeIngredients(slots);
-    this.inventory.addItem(result.id, result.count);
-    this._updateCraftResult();
-    this._renderInventoryUI();
+    // Try whichever panel is currently visible
+    for (const mode of ['inventory','crafting']) {
+      const slots = mode==='crafting' ? this._craftSlots3 : this._craftSlots;
+      const size  = mode==='crafting' ? 3 : 2;
+      const rows  = [];
+      for (let r=0;r<size;r++) {
+        const row=[]; for(let c=0;c<size;c++) row.push(slots[r*size+c]?.id||0);
+        rows.push(row);
+      }
+      const result = matchRecipe(rows);
+      if (result) {
+        consumeIngredients(slots);
+        this.inventory.addItem(result.id, result.count);
+        this._updateCraftResult();
+        this._renderInventoryUI();
+        this._renderRecipeBook();
+        return;
+      }
+    }
   }
 
   _updateCraftResult() {
-    const el = document.getElementById('craft-result-slot');
-    if (!el) return;
-    const slots = this._craftMode==='crafting' ? this._craftSlots3 : this._craftSlots;
-    const size  = this._craftMode==='crafting' ? 3 : 2;
-    const rows  = [];
-    for (let r=0;r<size;r++) {
-      const row=[]; for(let c=0;c<size;c++) row.push(slots[r*size+c]?.id||0);
-      rows.push(row);
+    // Actualiza ambos os slots de resultado (2×2 e 3×3)
+    for (const mode of ['inventory','crafting']) {
+      const elId = mode==='crafting' ? 'craft-result-3' : 'craft-result-2';
+      const el   = document.getElementById(elId);
+      if (!el) continue;
+      const slots = mode==='crafting' ? this._craftSlots3 : this._craftSlots;
+      const size  = mode==='crafting' ? 3 : 2;
+      const rows  = [];
+      for (let r=0;r<size;r++) {
+        const row=[]; for(let c=0;c<size;c++) row.push(slots[r*size+c]?.id||0);
+        rows.push(row);
+      }
+      const result = matchRecipe(rows);
+      renderSlotEl(el, result ? { id:result.id, count:result.count } : null);
     }
-    const result = matchRecipe(rows);
-    renderSlotEl(el, result ? { id:result.id, count:result.count } : null);
   }
 
   _doSmelt() {
@@ -373,6 +390,143 @@ export class Game {
   }
 
   _takeSmeltResult() { /* handled via _doSmelt */ }
+
+  // ── Livro de Receitas ─────────────────────────────────────────────────────
+
+  _renderRecipeBook() {
+    const list = document.getElementById('recipe-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    for (const recipe of RECIPES) {
+      const rows = recipe.grid.length;
+      const cols = Math.max(...recipe.grid.map(r => r.length));
+      const size = (rows <= 2 && cols <= 2) ? 2 : 3;
+      const needs3 = size === 3;
+      const hasMats = this._canCraftRecipe(recipe);
+
+      const card = document.createElement('div');
+      card.className = 'recipe-card' + (hasMats ? ' has-mats' : '');
+      card.title = hasMats ? 'Clica para colocar na bancada' : 'Materiais insuficientes';
+
+      // Mini grelha de ingredientes
+      const grid = document.createElement('div');
+      grid.className = `rec-grid s${size}`;
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          const id = recipe.grid[r]?.[c] || 0;
+          const slot = document.createElement('div');
+          slot.className = 'rec-slot';
+          if (id) {
+            slot.style.backgroundImage = `url(${getItemIconDataUrl(id)})`;
+          }
+          grid.appendChild(slot);
+        }
+      }
+
+      // Seta
+      const arrow = document.createElement('div');
+      arrow.className = 'rec-arrow';
+      arrow.textContent = '→';
+
+      // Resultado
+      const res = document.createElement('div');
+      res.className = 'rec-result';
+      const resSlot = document.createElement('div');
+      resSlot.className = 'rec-result-slot';
+      resSlot.style.backgroundImage = `url(${getItemIconDataUrl(recipe.result.id)})`;
+      const cnt = document.createElement('span');
+      cnt.className = 'rec-count';
+      cnt.textContent = recipe.result.count > 1 ? `×${recipe.result.count}` : '';
+      res.appendChild(resSlot);
+      res.appendChild(cnt);
+
+      // Info: nome + tag 3×3
+      const info = document.createElement('div');
+      info.className = 'rec-info';
+      const nm = document.createElement('div');
+      nm.className = 'rec-name';
+      nm.textContent = recipe.name;
+      info.appendChild(nm);
+      if (needs3) {
+        const tag = document.createElement('div');
+        tag.className = 'rec-tag';
+        tag.textContent = '🪓 bancada';
+        info.appendChild(tag);
+      }
+
+      card.appendChild(grid);
+      card.appendChild(arrow);
+      card.appendChild(res);
+      card.appendChild(info);
+
+      if (hasMats) {
+        card.addEventListener('click', () => this._applyRecipe(recipe, size));
+      }
+      list.appendChild(card);
+    }
+  }
+
+  _canCraftRecipe(recipe) {
+    const needed = {};
+    for (const row of recipe.grid)
+      for (const id of row)
+        if (id) needed[id] = (needed[id] || 0) + 1;
+    for (const [id, n] of Object.entries(needed))
+      if (this._countInInventory(+id) < n) return false;
+    return true;
+  }
+
+  _countInInventory(id) {
+    let total = 0;
+    for (const s of this.inventory.slots) if (s?.id === id) total += s.count;
+    return total;
+  }
+
+  _takeFromInventory(id, count) {
+    for (let i = 0; i < this.inventory.slots.length; i++) {
+      const s = this.inventory.slots[i];
+      if (s?.id === id && s.count >= count) {
+        s.count -= count;
+        if (s.count <= 0) this.inventory.slots[i] = null;
+        this.inventory._changed();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  _applyRecipe(recipe, size) {
+    const needs3 = size === 3;
+    // Mudar para o painel correcto
+    this._switchCraftMode(needs3 ? 'crafting' : 'inventory');
+
+    // Devolver ingredientes actuais ao inventário
+    const slots = needs3 ? this._craftSlots3 : this._craftSlots;
+    for (let i = 0; i < slots.length; i++) {
+      if (slots[i]) { this.inventory.addItem(slots[i].id, slots[i].count); slots[i] = null; }
+    }
+
+    // Verificar materiais novamente após devolver
+    if (!this._canCraftRecipe(recipe)) {
+      this._updateCraftResult(); this._renderInventoryUI(); return;
+    }
+
+    // Preencher grelha com a receita
+    for (let r = 0; r < recipe.grid.length; r++) {
+      for (let c = 0; c < (recipe.grid[r]?.length || 0); c++) {
+        const id = recipe.grid[r][c];
+        if (!id) continue;
+        if (this._takeFromInventory(id, 1)) {
+          slots[r * size + c] = { id, count: 1 };
+        }
+      }
+    }
+
+    this._updateCraftResult();
+    this._renderInventoryUI();
+    this._renderRecipeBook();
+  }
 
   // ── Render do inventário ──────────────────────────────────────────────────
   _renderInventoryUI() {
