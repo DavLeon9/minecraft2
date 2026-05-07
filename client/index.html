@@ -48,6 +48,32 @@
     #break-progress { position:absolute; left:50%; top:calc(50% + 22px); transform:translateX(-50%); width:90px; height:7px; background:rgba(0,0,0,.65); border:1px solid rgba(255,255,255,.35); border-radius:3px; overflow:hidden; display:none; }
     #break-fill { height:100%; width:0%; background:linear-gradient(90deg,#ff8800,#ffcc00); border-radius:2px; transition:width .04s linear; }
 
+    /* ── BARRAS DE ESTADO (vida/fome) ───────────────────────────── */
+    #status-bars {
+      position:absolute; bottom:88px; left:50%; transform:translateX(-50%);
+      display:flex; justify-content:space-between;
+      width:calc(58px * 9 + 4px * 8); /* mesma largura que a hotbar */
+      pointer-events:none;
+    }
+    #health-bar, #hunger-bar { display:flex; gap:2px; align-items:center; }
+    #hunger-bar { flex-direction:row-reverse; }
+
+    .heart, .hunger-icon {
+      width:16px; height:16px;
+      background-size:contain; background-repeat:no-repeat; background-position:center;
+      image-rendering:pixelated; flex-shrink:0;
+      /* pixel-art heart/food drawn via box-shadow + clip-path workaround: use background-image inline */
+    }
+    /* Coração — desenhado em CSS */
+    .heart { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1 3 Q1 1 3 1 Q5 1 5 3 Q5 1 7 1 Q9 1 9 3 Q9 6 5 9 Q1 6 1 3Z' fill='%23e53935'/%3E%3C/svg%3E"); }
+    .heart.half { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1 3 Q1 1 3 1 Q5 1 5 3 Q5 1 7 1 Q9 1 9 3 Q9 6 5 9 Q1 6 1 3Z' fill='%23555'/%3E%3Cpath d='M1 3 Q1 1 3 1 Q5 1 5 3 Q5 6 5 9 Q1 6 1 3Z' fill='%23e53935'/%3E%3C/svg%3E"); }
+    .heart.empty { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cpath d='M1 3 Q1 1 3 1 Q5 1 5 3 Q5 1 7 1 Q9 1 9 3 Q9 6 5 9 Q1 6 1 3Z' fill='%23555'/%3E%3C/svg%3E"); }
+
+    /* Ícone de comida — desenhado em CSS (coxa de frango simplificada) */
+    .hunger-icon { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cellipse cx='6' cy='4' rx='3' ry='3' fill='%23c8782a'/%3E%3Crect x='3' y='6' width='2' height='3' rx='1' fill='%23a05820'/%3E%3C/svg%3E"); }
+    .hunger-icon.half { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cellipse cx='6' cy='4' rx='3' ry='3' fill='%23555'/%3E%3Crect x='3' y='6' width='2' height='3' rx='1' fill='%23444'/%3E%3Cellipse cx='5' cy='4' rx='2' ry='3' fill='%23c8782a'/%3E%3C/svg%3E"); }
+    .hunger-icon.empty { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Cellipse cx='6' cy='4' rx='3' ry='3' fill='%23555'/%3E%3Crect x='3' y='6' width='2' height='3' rx='1' fill='%23444'/%3E%3C/svg%3E"); }
+
     /* Hotbar */
     #hotbar { position:absolute; bottom:24px; left:50%; transform:translateX(-50%); display:flex; gap:4px; z-index:15; pointer-events:all; }
     .slot { width:58px; height:58px; border:2px solid rgba(255,255,255,.35); border-radius:4px; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; opacity:.82; cursor:pointer; position:relative; image-rendering:pixelated; transition:border-color .1s; }
@@ -229,6 +255,12 @@
 <div id="hud">
   <div id="crosshair"></div>
   <div id="break-progress"><div id="break-fill"></div></div>
+
+  <!-- Barras de vida e fome -->
+  <div id="status-bars">
+    <div id="health-bar"></div>
+    <div id="hunger-bar"></div>
+  </div>
 
   <div id="hotbar">
     <div class="slot active" data-slot="0"></div>

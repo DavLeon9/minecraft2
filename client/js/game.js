@@ -56,6 +56,20 @@ export class Game {
     this._craftSlots3  = new Array(9).fill(null);  // 3x3
     this._furnaceSlots = [null, null];             // [ingredient, fuel]
     this._heldItem     = null;                     // item no cursor
+
+    // Ciclo dia/noite
+    this._dayTime      = 0.25;   // 0-1 (0=meia-noite, 0.25=manhã, 0.5=meio-dia, 0.75=anoitecer)
+    this._dayDuration  = 480;    // segundos por ciclo completo
+    this._sun          = null;
+    this._fill         = null;
+    this._ambient      = null;
+
+    // Saúde e fome
+    this._health       = 20;     // 0-20 (10 corações)
+    this._hunger       = 20;     // 0-20 (10 ícones de comida)
+    this._hungerTimer  = 0;
+    this._regenTimer   = 0;
+    this._starvTimer   = 0;
   }
 
   // ── Inicialização ─────────────────────────────────────────────────────────
@@ -87,17 +101,25 @@ export class Game {
   _initScene() {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x87ceeb);
-    this.scene.fog         = new THREE.Fog(0x87ceeb, 45, 95);
+    this.scene.fog         = new THREE.Fog(0x87ceeb, 60, 130);
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.05, 200);
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-    const sun = new THREE.DirectionalLight(0xfffde7, 0.85);
-    sun.position.set(40, 70, 30); sun.castShadow=true;
-    const sc=sun.shadow.camera; sc.left=sc.bottom=-70; sc.right=sc.top=70;
-    sc.near=0.5; sc.far=180; sun.shadow.mapSize.setScalar(2048); sun.shadow.bias=-0.0005;
-    this.scene.add(sun);
-    const fill = new THREE.DirectionalLight(0xadd8e6, 0.25);
-    fill.position.set(-20, 10, -20);
-    this.scene.add(fill);
+
+    this._ambient = new THREE.AmbientLight(0xffffff, 0.55);
+    this.scene.add(this._ambient);
+
+    this._sun = new THREE.DirectionalLight(0xfffde7, 0.85);
+    this._sun.position.set(40, 70, 30);
+    this._sun.castShadow = true;
+    const sc = this._sun.shadow.camera;
+    sc.left = sc.bottom = -80; sc.right = sc.top = 80;
+    sc.near = 0.5; sc.far = 200;
+    this._sun.shadow.mapSize.setScalar(2048);
+    this._sun.shadow.bias = -0.0005;
+    this.scene.add(this._sun);
+
+    this._fill = new THREE.DirectionalLight(0xadd8e6, 0.25);
+    this._fill.position.set(-20, 10, -20);
+    this.scene.add(this._fill);
   }
 
   // ── Network handlers ──────────────────────────────────────────────────────
@@ -133,6 +155,7 @@ export class Game {
       this.inventory.onChanged = () => { this._renderInventoryUI(); this._renderRecipeBook(); };
 
       this.ready = true;
+      this._renderHealthHunger();
     });
 
     network.on('players:list', (list) => { list.forEach(p=>this._addAvatar(p.id,p)); this._updateCount(); });
@@ -405,9 +428,12 @@ export class Game {
       const needs3 = size === 3;
       const hasMats = this._canCraftRecipe(recipe);
 
+      // Só mostra receitas que o jogador pode fazer agora
+      if (!hasMats) continue;
+
       const card = document.createElement('div');
-      card.className = 'recipe-card' + (hasMats ? ' has-mats' : '');
-      card.title = hasMats ? 'Clica para colocar na bancada' : 'Materiais insuficientes';
+      card.className = 'recipe-card has-mats';
+      card.title = 'Clica para colocar na bancada';
 
       // Mini grelha de ingredientes
       const grid = document.createElement('div');
@@ -460,9 +486,7 @@ export class Game {
       card.appendChild(res);
       card.appendChild(info);
 
-      if (hasMats) {
-        card.addEventListener('click', () => this._applyRecipe(recipe, size));
-      }
+      card.addEventListener('click', () => this._applyRecipe(recipe, size));
       list.appendChild(card);
     }
   }
@@ -576,6 +600,101 @@ export class Game {
     el.style.display = this._heldItem ? 'flex' : 'none';
   }
 
+  // ── Ciclo Dia/Noite ───────────────────────────────────────────────────────
+  _updateDayNight(dt) {
+    if (!this._sun) return;
+    this._dayTime = (this._dayTime + dt / this._dayDuration) % 1;
+    const t = this._dayTime;
+
+    // Sun arc: angle = t*2π — at t=0 (midnight) sun is below, t=0.5 (noon) sun is at top
+    const angle = t * Math.PI * 2 - Math.PI / 2; // -PI/2 at midnight → PI/2 at noon → 3PI/2 at midnight
+    const dist  = 100;
+    this._sun.position.set(Math.cos(angle) * dist, Math.sin(angle) * dist, 35);
+
+    // sunFactor: 0 at horizon, 1 at noon (only positive when sun is up)
+    const sunFactor = Math.max(0, Math.sin(angle + Math.PI / 2)); // sin of elevation
+
+    // Sky and lighting based on time
+    let skyR, skyG, skyB, ambI, sunI;
+
+    if (sunFactor > 0) {
+      // Daytime (sun above horizon)
+      const day = Math.min(1, sunFactor * 2.5); // fast transition from orange to blue
+      // Dawn/dusk = orange (255,112,67), Day = blue (135,206,235)
+      skyR = Math.round(255 + (135 - 255) * day);
+      skyG = Math.round(112 + (206 - 112) * day);
+      skyB = Math.round( 67 + (235 -  67) * day);
+      ambI = 0.18 + sunFactor * 0.55;
+      sunI = sunFactor * 0.90;
+      this._sun.color.setRGB(1, 0.9 + day * 0.1, 0.7 + day * 0.2);
+    } else {
+      // Nighttime
+      skyR = 8; skyG = 10; skyB = 22;
+      ambI = 0.06;
+      sunI = 0;
+    }
+
+    const skyColor = new THREE.Color(skyR / 255, skyG / 255, skyB / 255);
+    this.scene.background = skyColor;
+    this.scene.fog.color.copy(skyColor);
+    this._ambient.intensity = ambI;
+    this._sun.intensity     = sunI;
+    this._fill.intensity    = 0.08 + sunFactor * 0.18;
+  }
+
+  // ── Saúde e Fome ──────────────────────────────────────────────────────────
+  _updateHealthHunger(dt) {
+    // Fome: perde 1 ponto a cada 30 seg
+    this._hungerTimer += dt;
+    if (this._hungerTimer >= 30) {
+      this._hungerTimer = 0;
+      if (this._hunger > 0) { this._hunger--; this._renderHealthHunger(); }
+    }
+
+    // Regeneração: +1 vida a cada 1.5s se fome >= 18
+    if (this._hunger >= 18 && this._health < 20) {
+      this._regenTimer += dt;
+      if (this._regenTimer >= 1.5) {
+        this._regenTimer = 0;
+        this._health = Math.min(20, this._health + 1);
+        this._renderHealthHunger();
+      }
+    } else { this._regenTimer = 0; }
+
+    // Dano por fome: -1 vida a cada 4s se fome == 0 (mín 1 HP)
+    if (this._hunger === 0) {
+      this._starvTimer += dt;
+      if (this._starvTimer >= 4) {
+        this._starvTimer = 0;
+        if (this._health > 1) { this._health--; this._renderHealthHunger(); }
+      }
+    } else { this._starvTimer = 0; }
+  }
+
+  _renderHealthHunger() {
+    const hEl = document.getElementById('health-bar');
+    const fEl = document.getElementById('hunger-bar');
+    if (!hEl || !fEl) return;
+
+    // Corações (10 total, cada um vale 2 HP)
+    let hHtml = '';
+    for (let i = 0; i < 10; i++) {
+      const hp = Math.max(0, Math.min(2, this._health - i * 2));
+      const cls = hp >= 2 ? 'full' : hp === 1 ? 'half' : 'empty';
+      hHtml += `<span class="heart ${cls}"></span>`;
+    }
+    hEl.innerHTML = hHtml;
+
+    // Ícones de fome (10 total, cada um vale 2)
+    let fHtml = '';
+    for (let i = 0; i < 10; i++) {
+      const fp = Math.max(0, Math.min(2, this._hunger - i * 2));
+      const cls = fp >= 2 ? 'full' : fp === 1 ? 'half' : 'empty';
+      fHtml += `<span class="hunger-icon ${cls}"></span>`;
+    }
+    fEl.innerHTML = fHtml;
+  }
+
   // ── Avatares ──────────────────────────────────────────────────────────────
   _addAvatar(id, data) {
     if (this.avatars.has(id)) return;
@@ -600,6 +719,8 @@ export class Game {
       this.player.update(dt);
       for (const av of this.avatars.values()) av.animate(dt);
       this.handRenderer.animate(dt);
+      this._updateDayNight(dt);
+      this._updateHealthHunger(dt);
     }
 
     this._frameCount++;

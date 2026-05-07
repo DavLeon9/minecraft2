@@ -7,7 +7,7 @@ const { generateWorld, BLOCK } = require('./worldGen');
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const PORT   = process.env.PORT || 3000;
-const W = 64, D = 64, H = 32;
+const W = 128, D = 128, H = 64;
 const NICK_RE = /^[a-zA-Z0-9_]{2,16}$/;
 
 // ─── HTTP + Socket.io ─────────────────────────────────────────────────────────
