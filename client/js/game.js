@@ -182,37 +182,23 @@ export class Game {
       }
     });
 
-    // Drag: mousedown pega item, mouseup solta item noutro slot
-    let _dragSrc = null;
-    document.addEventListener('mousedown', e => {
-      if (!this._invOpen) return;
-      if (e.button !== 0) return;
+    // Click ESQUERDO: pegar stack inteira / colocar stack inteira / trocar
+    document.addEventListener('click', e => {
+      if (!this._invOpen || e.button !== 0) return;
+      if (e.target.closest('#craft-result-slot,#smelt-result-slot')) {
+        this._takeCraftResult(); return;
+      }
       const slot = e.target.closest('.inv-slot');
-      const isResult = e.target.closest('#craft-result-slot,#smelt-result-slot');
-      if (isResult) { this._takeCraftResult(); return; }
       if (!slot) return;
       e.preventDefault();
-      const idx = parseInt(slot.dataset.idx);
-      const area = slot.dataset.area;
-      _dragSrc = { idx, area };
-      if (!this._heldItem) {
-        // pegar item
-        this._pickupSlot(idx, area);
-        this._renderInventoryUI(); this._renderCursor();
-      }
-    });
-    document.addEventListener('mouseup', e => {
-      if (!this._invOpen || e.button !== 0) return;
-      const slot = e.target.closest('.inv-slot');
-      if (!slot || !this._heldItem) { _dragSrc = null; return; }
       const idx  = parseInt(slot.dataset.idx);
       const area = slot.dataset.area;
-      // Não colocar de volta na mesma origem (seria no-op)
-      if (_dragSrc && _dragSrc.idx === idx && _dragSrc.area === area) { _dragSrc = null; return; }
-      _dragSrc = null;
-      this._placeSlot(idx, area, false);
+      if (!this._heldItem) this._pickupSlot(idx, area, false);
+      else                  this._placeSlot(idx, area, false);
       this._renderInventoryUI(); this._renderCursor();
     });
+
+    // Click DIREITO: pegar metade / colocar 1 item
     document.addEventListener('contextmenu', e => {
       if (!this._invOpen) return;
       const slot = e.target.closest('.inv-slot');
@@ -220,8 +206,8 @@ export class Game {
       e.preventDefault();
       const idx  = parseInt(slot.dataset.idx);
       const area = slot.dataset.area;
-      if (!this._heldItem) this._pickupSlot(idx, area, true);
-      else this._placeSlot(idx, area, true);
+      if (!this._heldItem) this._pickupSlot(idx, area, true);  // pegar metade
+      else                  this._placeSlot(idx, area, true);   // colocar 1
       this._renderInventoryUI(); this._renderCursor();
     });
 

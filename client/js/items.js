@@ -7,6 +7,7 @@
  *   200–  : ferramentas
  */
 import { BLOCK } from './constants.js';
+import { getBlockFaceCanvas } from './world.js';
 
 // ─── IDs de itens (não-blocos) ────────────────────────────────────────────────
 export const ITEM_ID = Object.freeze({
@@ -262,24 +263,16 @@ function _sword(c, tier) {
   _r(c, 10, 17, 5, 8, '#8b5a2b');
 }
 
-const _BD = { // block icon definitions [top, left, right]
-  [BLOCK.GRASS]:          ['#6ec840','#907040','#6a4e20'],
-  [BLOCK.DIRT]:           ['#b08050','#8a6030','#6a4020'],
-  [BLOCK.STONE]:          ['#b0b0b0','#888888','#606060'],
-  [BLOCK.COBBLESTONE]:    ['#a0a0a0','#686868','#484848'],
-  [BLOCK.WOOD]:           ['#d0a050','#a07028','#785010'],
-  [BLOCK.LOG]:            ['#a87840','#785820','#584010'],
-  [BLOCK.LEAVES]:         ['#44c020','#28900a','#186808'],
-  [BLOCK.COAL_ORE]:       ['#888878','#505048','#383830'],
-  [BLOCK.IRON_ORE]:       ['#9a9070','#786858','#504838'],
-  [BLOCK.GOLD_ORE]:       ['#b0b060','#808020','#505000'],
-  [BLOCK.DIAMOND_ORE]:    ['#68b8c0','#208898','#106878'],
-  [BLOCK.CRAFTING_TABLE]: ['#d0a850','#905820','#704010'],
-  [BLOCK.FURNACE]:        ['#989088','#606858','#404840'],
-};
-
+// Blocos: desenha a textura real do bloco (mesmo pixel-art do mundo 3D)
+// Itens não-bloco: shapes geométricas pixeladas
 function _drawItemIcon(c, id) {
-  if (_BD[id]) { const [t,l,r] = _BD[id]; _block3d(c,t,l,r); return; }
+  // Tentar textura real do bloco
+  const face = getBlockFaceCanvas(id);
+  if (face) {
+    c.imageSmoothingEnabled = false;
+    c.drawImage(face, 0, 0, 32, 32); // escala 16×16 → 32×32 pixelado
+    return;
+  }
   const I = ITEM_ID;
   if      (id===I.COAL)       _gem(c,'#282820','#484838','#101008');
   else if (id===I.RAW_IRON)   _gem(c,'#c07840','#e09860','#904820');

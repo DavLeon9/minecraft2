@@ -11,10 +11,10 @@ export class HandRenderer {
     sun.position.set(0.4, 1.0, 0.6);
     this.handScene.add(sun);
 
-    // handGroup pivot = shoulder position (arm hangs DOWN from here)
+    // Ombro abaixo do ecrã — braço sobe para dentro do campo de visão
     this.handGroup = new THREE.Group();
-    this.handGroup.position.set(0.56, 0.42, -0.55);
-    this.handGroup.rotation.set(0.05, -0.16, 0.09);
+    this.handGroup.position.set(0.60, -0.62, -0.55);
+    this.handGroup.rotation.set(0.12, -0.20, 0.08);
     this.handScene.add(this.handGroup);
 
     this._swingT   = 0;
@@ -28,22 +28,20 @@ export class HandRenderer {
     this._buildItemInHand();
   }
 
-  // ── Construção ───────────────────────────────────────────────────────────
-
   _buildArm() {
     const skinMat  = new THREE.MeshLambertMaterial({ color: this._skinColor });
     const shirtMat = new THREE.MeshLambertMaterial({ color: this._shirtColor });
     this._shirtMat = shirtMat;
 
-    // Arm hangs DOWN from shoulder (y=0). Each segment centre below previous.
+    // Braço sobe a partir do ombro (y=0 = ombro, fora do ecrã abaixo)
     this._upper = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.34, 0.26), shirtMat);
-    this._upper.position.y = -0.17;   // shoulder to elbow
+    this._upper.position.y = 0.17;   // ombro → cotovelo
 
     this._fore = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.28, 0.24), skinMat);
-    this._fore.position.y = -0.48;    // elbow to wrist
+    this._fore.position.y = 0.48;    // cotovelo → pulso
 
     this._hand = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.14, 0.24), skinMat);
-    this._hand.position.y = -0.69;    // wrist to knuckles
+    this._hand.position.y = 0.69;    // pulso → knuckles
 
     this.handGroup.add(this._upper, this._fore, this._hand);
   }
@@ -53,13 +51,11 @@ export class HandRenderer {
       new THREE.BoxGeometry(0.26, 0.26, 0.26),
       new THREE.MeshLambertMaterial({ color: 0xaaaaaa })
     );
-    this.heldMesh.position.set(-0.02, -0.84, 0.06);
+    this.heldMesh.position.set(-0.02, 0.84, 0.06);
     this.heldMesh.rotation.set(0.30, 0.60, 0.12);
     this.heldMesh.visible = false;
     this.handGroup.add(this.heldMesh);
   }
-
-  // ── API pública ──────────────────────────────────────────────────────────
 
   setNickHue(hue) {
     this._shirtColor.setHSL(hue, 0.72, 0.45);
@@ -89,13 +85,13 @@ export class HandRenderer {
 
     const swing = Math.sin(this._swingT * Math.PI);
 
-    // Swing forward (positive X = arm tips toward camera = forward downswing)
-    this.handGroup.rotation.x = 0.05 + swing * 0.82;
-    this.handGroup.rotation.z = 0.09 - swing * 0.05;
+    // Braço aponta +Y (para cima). Rotação X negativa = ponta do braço (mão)
+    // roda para +Z (em direção à câmara) = swing de mineração correto
+    this.handGroup.rotation.x = 0.12 - swing * 0.85;
+    this.handGroup.rotation.z = 0.08 + swing * 0.04;
 
-    // Idle breathing bob
-    const idleBob = Math.sin(this._idleT * 1.2) * 0.007;
-    this.handGroup.position.y = 0.42 + idleBob - swing * 0.03;
+    // Respiração idle
+    this.handGroup.position.y = -0.62 + Math.sin(this._idleT * 1.2) * 0.007;
   }
 
   render(renderer) {

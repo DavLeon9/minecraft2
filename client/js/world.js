@@ -152,6 +152,30 @@ function getMaterial(type) {
   return _cache[type];
 }
 
+// ─── Block face canvas (para ícones do inventário) ───────────────────────────
+export function getBlockFaceCanvas(blockType) {
+  const map = {
+    [BLOCK.GRASS]:          grassSide,
+    [BLOCK.DIRT]:           dirt,
+    [BLOCK.STONE]:          stone,
+    [BLOCK.COBBLESTONE]:    cobblestone,
+    [BLOCK.WOOD]:           planks,
+    [BLOCK.LOG]:            logSide,
+    [BLOCK.LEAVES]:         leaves,
+    [BLOCK.COAL_ORE]:       coalOre,
+    [BLOCK.IRON_ORE]:       ironOre,
+    [BLOCK.GOLD_ORE]:       goldOre,
+    [BLOCK.DIAMOND_ORE]:    diamondOre,
+    [BLOCK.CRAFTING_TABLE]: craftingTop,
+    [BLOCK.FURNACE]:        furnaceFront,
+  };
+  const drawer = map[blockType];
+  if (!drawer) return null;
+  const cv = document.createElement('canvas'); cv.width = cv.height = 16;
+  drawer(cv.getContext('2d'));
+  return cv;
+}
+
 // ─── WorldRenderer ────────────────────────────────────────────────────────────
 export class WorldRenderer {
   constructor(scene, world) {
