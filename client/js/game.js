@@ -9,6 +9,7 @@ import { Inventory }             from './inventory.js';
 import { PLAYER_EYE_Y, BLOCK }   from './constants.js';
 import { ITEM_ID, getItemInfo, ITEM_COLOR, ITEM_ICON, isBlockItem, getItemIconDataUrl } from './items.js';
 import { matchRecipe, consumeIngredients, SMELT_RECIPES, RECIPES } from './crafting.js';
+import { MobManager } from './mobs.js';
 
 // ─── Utilidade de display de slot ─────────────────────────────────────────────
 function renderSlotEl(el, item) {
@@ -43,7 +44,9 @@ export class Game {
     this.inventory     = new Inventory();
     this.localNick     = '';
 
-    this.avatars       = new Map();
+    this.avatars          = new Map();
+    this._avatarPositions = new Map(); // socketId → {x,y,z}
+    this.mobManager       = null;
 
     this.ready         = false;
     this._frameCount   = 0;
@@ -70,6 +73,11 @@ export class Game {
     this._hungerTimer  = 0;
     this._regenTimer   = 0;
     this._starvTimer   = 0;
+    this._dead         = false;
+    this._spawnPos     = null;   // {x,y,z} para respawn
+
+    // Combate
+    this._attackCooldown = 0;    // segundos até poder atacar de novo
   }
 
   // ── Inicialização ─────────────────────────────────────────────────────────
@@ -120,6 +128,8 @@ export class Game {
     this._fill = new THREE.DirectionalLight(0xadd8e6, 0.25);
     this._fill.position.set(-20, 10, -20);
     this.scene.add(this._fill);
+
+    this.mobManager = new MobManager(this.scene);
   }
 
   // ── Network handlers ──────────────────────────────────────────────────────
@@ -131,11 +141,13 @@ export class Game {
       this.worldRenderer = new WorldRenderer(this.scene, this.world);
       this.worldRenderer.build();
 
+      this._spawnPos = { x: data.spawnX, y: data.spawnY, z: data.spawnZ };
       this.player = new PlayerController(
         this.camera, this.scene, this.world, network, this.inventory,
         () => this.worldRenderer.rebuild(),
         (type) => this._openSpecial(type),
         this.handRenderer,
+        (foodVal) => this._onEat(foodVal),
       );
       this.player.setSpawn(data.spawnX, data.spawnY, data.spawnZ);
 
@@ -163,10 +175,42 @@ export class Game {
     network.on('player:leave', ({id}) => { this._removeAvatar(id);  this._updateCount(); });
     network.on('player:move',  ({id,x,y,z,rotY,moving}) => {
       this.avatars.get(id)?.update(x, y-PLAYER_EYE_Y, z, rotY, moving);
+      this._avatarPositions.set(id, { x, y: y - PLAYER_EYE_Y, z });
     });
     network.on('block:update', ({x,y,z,type}) => {
       this.world.setBlock(x,y,z,type); this.worldRenderer?.rebuild();
     });
+
+    // ── Mobs ────────────────────────────────────────────────────────────────
+    network.on('mob:init',  (list)  => this.mobManager?.spawnBatch(list));
+    network.on('mob:spawn', (data)  => this.mobManager?.spawn(data));
+    network.on('mob:batch', (list)  => this.mobManager?.updateBatch(list));
+    network.on('mob:die',   ({id, drops, x, y, z}) => {
+      this.mobManager?.die(id);
+      // Adicionar drops ao inventário do jogador mais próximo (só o local)
+      if (drops && this.player) {
+        const px = this.player.position.x, pz = this.player.position.z;
+        const dx = (x ?? 0) - px, dz = (z ?? 0) - pz;
+        if (Math.sqrt(dx*dx + dz*dz) < 8) {
+          drops.forEach(d => this.inventory.addItem(d.id, d.count));
+        }
+      }
+    });
+
+    // ── Dano ao jogador (de mobs ou PvP) ──────────────────────────────────
+    network.on('player:damage', ({ amount, sourceName }) => {
+      if (this._dead) return;
+      this._health = Math.max(0, this._health - amount);
+      this._renderHealthHunger();
+      this._flashDamage();
+      if (this._health <= 0) this._onDeath(sourceName);
+    });
+
+    // ── Mensagens de morte ──────────────────────────────────────────────────
+    network.on('chat:kill', ({ player, killedBy }) => {
+      this._showKillFeed(`${player} foi morto por ${killedBy}`);
+    });
+
     network.on('disconnect', () => {
       document.getElementById('overlay').style.display='flex';
       document.getElementById('overlay-msg').textContent='Desconectado. Recarrega.';
@@ -238,6 +282,7 @@ export class Game {
     });
 
     document.getElementById('smelt-btn')?.addEventListener('click', () => this._doSmelt());
+    document.getElementById('btn-respawn')?.addEventListener('click', () => this._respawn());
 
     // Fechar ao clicar no fundo escuro
     document.getElementById('inventory-screen')?.addEventListener('click', e => {
@@ -247,6 +292,19 @@ export class Game {
     // Tabs de craft
     document.querySelectorAll('.craft-tab').forEach(btn => {
       btn.addEventListener('click', () => this._switchCraftMode(btn.dataset.mode));
+    });
+
+    // ── Ataque a entidades (antes do PlayerController) ───────────────────────
+    // Este listener é adicionado antes do PlayerController existir, por isso
+    // corre primeiro e pode suprimir o breaking de blocos.
+    window.addEventListener('mousedown', e => {
+      if (e.button !== 0 || this._invOpen || !this.player?.controls.isLocked || this._dead) return;
+      if (this._attackCooldown > 0) return;
+      const hit = this._getEntityInCrosshair();
+      if (hit) {
+        this.player.suppressNextBreak();
+        this._attackEntity(hit);
+      }
     });
 
     // Cursor do item segurado
@@ -600,6 +658,97 @@ export class Game {
     el.style.display = this._heldItem ? 'flex' : 'none';
   }
 
+  // ── Combate e entidades ───────────────────────────────────────────────────
+
+  _getPlayerDamage() {
+    const held = this.inventory.getHotbar(this.player?.selectedSlot ?? 0);
+    if (!held) return 1;
+    const info = getItemInfo(held.id);
+    if (info.tool === 'sword') return [3, 5, 7, 9][info.tier ?? 0];
+    if (info.tool === 'axe')   return [2, 4, 6, 8][info.tier ?? 0];
+    return 1;
+  }
+
+  /** Retorna { type:'mob'|'player', id } ou null se nada no crosshair */
+  _getEntityInCrosshair() {
+    if (!this.camera || !this.mobManager) return null;
+    // Testar mobs
+    const mobHit = this.mobManager.hitTest(this.camera);
+    if (mobHit) return { type: 'mob', id: mobHit.mobId, dist: mobHit.dist };
+    // Testar avatares (PvP)
+    const pos = this.player.position;
+    const dir = new THREE.Vector3();
+    this.camera.getWorldDirection(dir);
+    for (const [socketId, avPos] of this._avatarPositions) {
+      const dx = avPos.x - pos.x, dy = avPos.y - pos.y + 0.9, dz = avPos.z - pos.z;
+      const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+      if (dist > 5 || dist < 0.5) continue;
+      const dot = (dx*dir.x + dy*dir.y + dz*dir.z) / dist;
+      if (dot > 0.80) return { type: 'player', id: socketId, dist };
+    }
+    return null;
+  }
+
+  _attackEntity(hit) {
+    const dmg = this._getPlayerDamage();
+    this._attackCooldown = 0.45;
+    this.handRenderer.swing?.();
+    if (hit.type === 'mob') {
+      this.network.socket.emit('mob:attack', { mobId: hit.id, damage: dmg });
+    } else if (hit.type === 'player') {
+      this.network.socket.emit('pvp:attack', { targetId: hit.id, damage: dmg });
+    }
+  }
+
+  _flashDamage() {
+    const overlay = document.getElementById('damage-flash');
+    if (!overlay) return;
+    overlay.style.opacity = '0.45';
+    clearTimeout(this._flashTimer);
+    this._flashTimer = setTimeout(() => { overlay.style.opacity = '0'; }, 300);
+  }
+
+  _onDeath(killedByName) {
+    if (this._dead) return;
+    this._dead = true;
+    this.network.socket.emit('player:died', { killedByName });
+    // Mostrar écran de morte
+    const el = document.getElementById('death-screen');
+    if (el) {
+      document.getElementById('death-cause').textContent = `Morto por: ${killedByName}`;
+      el.style.display = 'flex';
+    }
+    if (this.player?.controls.isLocked) this.player.controls.unlock();
+  }
+
+  _respawn() {
+    this._dead    = false;
+    this._health  = 20;
+    this._hunger  = 20;
+    this._hungerTimer = 0;
+    this._renderHealthHunger();
+    const el = document.getElementById('death-screen');
+    if (el) el.style.display = 'none';
+    if (this._spawnPos) this.player.setSpawn(this._spawnPos.x, this._spawnPos.y, this._spawnPos.z);
+    setTimeout(() => this.player?.controls.lock(), 100);
+  }
+
+  _onEat(foodVal) {
+    this._hunger = Math.min(20, this._hunger + foodVal);
+    this._renderHealthHunger();
+    this._renderInventoryUI();
+  }
+
+  _showKillFeed(msg) {
+    const feed = document.getElementById('kill-feed');
+    if (!feed) return;
+    const line = document.createElement('div');
+    line.className = 'kill-line';
+    line.textContent = msg;
+    feed.appendChild(line);
+    setTimeout(() => line.remove(), 5000);
+  }
+
   // ── Ciclo Dia/Noite ───────────────────────────────────────────────────────
   _updateDayNight(dt) {
     if (!this._sun) return;
@@ -701,10 +850,12 @@ export class Game {
     const av = new PlayerAvatar(this.scene, this.labelRenderer, data.name);
     av.update(data.x, data.y-PLAYER_EYE_Y, data.z, data.rotY??0, false);
     this.avatars.set(id, av);
+    this._avatarPositions.set(id, { x: data.x, y: data.y - PLAYER_EYE_Y, z: data.z });
   }
   _removeAvatar(id) {
     const av=this.avatars.get(id); if(!av) return;
     av.dispose(this.scene); this.avatars.delete(id);
+    this._avatarPositions.delete(id);
   }
   _updateCount() {
     document.getElementById('info-players').textContent=`Jogadores: ${this.avatars.size+1}`;
@@ -719,8 +870,10 @@ export class Game {
       this.player.update(dt);
       for (const av of this.avatars.values()) av.animate(dt);
       this.handRenderer.animate(dt);
+      this.mobManager?.animate(dt);
       this._updateDayNight(dt);
-      this._updateHealthHunger(dt);
+      if (!this._dead) this._updateHealthHunger(dt);
+      if (this._attackCooldown > 0) this._attackCooldown -= dt;
     }
 
     this._frameCount++;

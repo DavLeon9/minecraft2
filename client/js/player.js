@@ -4,7 +4,7 @@ import {
   BLOCK, PLAYER_HEIGHT, PLAYER_EYE_Y, PLAYER_WIDTH,
   GRAVITY, JUMP_FORCE, MOVE_SPEED, REACH_DISTANCE, MOVE_SEND_RATE,
 } from './constants.js';
-import { canMine, getBreakTime, getDrops, isBlockItem, getToolInfo } from './items.js';
+import { canMine, getBreakTime, getDrops, isBlockItem, getToolInfo, getItemInfo } from './items.js';
 
 // ─── Raio DDA ─────────────────────────────────────────────────────────────────
 function castRay(camera, world) {
@@ -31,7 +31,7 @@ export class PlayerController {
    * @param {Function}     onOpenCrafting   fn(type) — 'crafting' | 'furnace'
    * @param {HandRenderer} hand
    */
-  constructor(camera, scene, world, network, inventory, onRebuild, onOpenSpecial, hand) {
+  constructor(camera, scene, world, network, inventory, onRebuild, onOpenSpecial, hand, onEat) {
     this.camera      = camera;
     this.world       = world;
     this.network     = network;
@@ -39,6 +39,9 @@ export class PlayerController {
     this.onRebuild   = onRebuild;
     this.onOpenSpecial = onOpenSpecial;
     this.hand        = hand;
+    this.onEat       = onEat; // callback(foodValue) when player eats
+
+    this._suppressBreak = false; // set by Game when entity takes attack priority
 
     this.controls = new PointerLockControls(camera, document.body);
     scene.add(this.controls.getObject());
@@ -103,7 +106,11 @@ export class PlayerController {
     window.addEventListener('mousedown', e => {
       if (!this.controls.isLocked) return;
       e.preventDefault();
-      if (e.button === 0) { this._breakMouse = true;  this._tryStartBreaking(); }
+      if (e.button === 0) {
+        if (this._suppressBreak) { this._suppressBreak = false; return; }
+        this._breakMouse = true;
+        this._tryStartBreaking();
+      }
       if (e.button === 2) this._placeOrInteract();
     });
     window.addEventListener('mouseup', e => {
@@ -224,9 +231,23 @@ export class PlayerController {
     else { bar.style.display='block'; fill.style.width=(p*100).toFixed(1)+'%'; }
   }
 
+  /** Chamado pelo Game quando atacou uma entidade — bloqueia o próximo break */
+  suppressNextBreak() { this._suppressBreak = true; }
+
   _placeOrInteract() {
     const ray = castRay(this.camera, this.world);
-    if (!ray) return;
+    // Sem bloco à vista → tentar comer
+    if (!ray) {
+      const item = this.heldItem;
+      if (item) {
+        const info = getItemInfo(item.id);
+        if (info.food) {
+          this.inventory.removeFromSlot(this.selectedSlot, 1);
+          this.onEat?.(info.food);
+        }
+      }
+      return;
+    }
     const {hit, prev} = ray;
 
     // Interagir com blocos especiais (clique direito)

@@ -213,8 +213,45 @@
       pointer-events:none;
     }
     .rec-info { flex:1; min-width:0; }
-    .rec-name { font-size:7px; color:#777; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .rec-tag { font-size:6px; color:#4a6a2a; margin-top:2px; }
+    .rec-name { font-size:11px; color:#ccc; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'Courier New',monospace; }
+    .rec-tag { font-size:9px; color:#5a9e3c; margin-top:3px; }
+
+    /* ── MORTE ────────────────────────────────────────────────────── */
+    #death-screen {
+      position:fixed; inset:0; z-index:25; display:none;
+      flex-direction:column; align-items:center; justify-content:center;
+      background:rgba(180,0,0,.45); backdrop-filter:blur(2px);
+    }
+    .death-card {
+      background:rgba(8,8,8,.92); border:3px solid #8a1010; border-top:4px solid #cc2020;
+      border-bottom:4px solid #3a0808; border-radius:6px; padding:36px 56px 40px;
+      text-align:center; display:flex; flex-direction:column; align-items:center; gap:14px;
+    }
+    .death-title { font-family:'Press Start 2P',monospace; font-size:1.4rem; color:#e53935; text-shadow:3px 3px 0 #5a0000; }
+    #death-cause { font-size:.82rem; color:#ff8888; min-height:20px; }
+    #btn-respawn { padding:13px 40px; font-family:'Press Start 2P',monospace; font-size:.68rem; background:#8a1010; border:none; border-bottom:4px solid #4a0808; border-radius:3px; color:#fff; cursor:pointer; margin-top:8px; }
+    #btn-respawn:hover { background:#cc2020; }
+
+    /* Flash de dano */
+    #damage-flash {
+      position:fixed; inset:0; pointer-events:none; z-index:22;
+      background:radial-gradient(ellipse at center, transparent 55%, rgba(200,0,0,0.7) 100%);
+      opacity:0; transition:opacity .25s ease-out;
+    }
+
+    /* ── KILL FEED ────────────────────────────────────────────────── */
+    #kill-feed {
+      position:fixed; top:50px; right:14px; z-index:18;
+      display:flex; flex-direction:column; align-items:flex-end; gap:4px;
+      pointer-events:none;
+    }
+    .kill-line {
+      background:rgba(0,0,0,.65); border-left:3px solid #e53935;
+      color:#ffaaaa; font-size:11px; font-family:'Courier New',monospace;
+      padding:4px 10px; border-radius:2px;
+      animation:kill-fade 5s forwards;
+    }
+    @keyframes kill-fade { 0%{opacity:1} 80%{opacity:1} 100%{opacity:0} }
 
     /* Cursor segurado */
     #cursor-item {
@@ -427,6 +464,21 @@
 
 <!-- Item segurado pelo cursor -->
 <div id="cursor-item"></div>
+
+<!-- Flash de dano -->
+<div id="damage-flash"></div>
+
+<!-- Kill feed -->
+<div id="kill-feed"></div>
+
+<!-- Écran de morte -->
+<div id="death-screen">
+  <div class="death-card">
+    <div class="death-title">☠ MORREU</div>
+    <div id="death-cause">Morto por: desconhecido</div>
+    <button id="btn-respawn">▶ RENASCER</button>
+  </div>
+</div>
 
 <script type="importmap">
 {

@@ -45,8 +45,11 @@ export const RECIPES = [
 
 // ─── Receitas da fornalha ─────────────────────────────────────────────────────
 export const SMELT_RECIPES = [
-  { input: I.RAW_IRON, fuel: I.COAL, result: { id: I.IRON_INGOT, count:1 } },
-  { input: I.RAW_GOLD, fuel: I.COAL, result: { id: I.GOLD_INGOT, count:1 } },
+  { input: I.RAW_IRON,     fuel: I.COAL, result: { id: I.IRON_INGOT,      count:1 } },
+  { input: I.RAW_GOLD,     fuel: I.COAL, result: { id: I.GOLD_INGOT,      count:1 } },
+  { input: I.RAW_PORKCHOP, fuel: I.COAL, result: { id: I.COOKED_PORKCHOP, count:1 } },
+  { input: I.RAW_BEEF,     fuel: I.COAL, result: { id: I.COOKED_BEEF,     count:1 } },
+  { input: I.RAW_CHICKEN,  fuel: I.COAL, result: { id: I.COOKED_CHICKEN,  count:1 } },
 ];
 
 // ─── Matcher ─────────────────────────────────────────────────────────────────

@@ -14,6 +14,11 @@ export const ITEM_ID = Object.freeze({
   COAL:       100, RAW_IRON: 101, RAW_GOLD: 102, DIAMOND:  103,
   IRON_INGOT: 104, GOLD_INGOT: 105, STICK: 106,
 
+  // Comida
+  RAW_PORKCHOP:    300, COOKED_PORKCHOP: 301,
+  RAW_BEEF:        302, COOKED_BEEF:     303,
+  RAW_CHICKEN:     304, COOKED_CHICKEN:  305,
+
   WOOD_PICK: 200, STONE_PICK: 201, IRON_PICK: 202, DIAMOND_PICK: 203,
   WOOD_AXE:  210, STONE_AXE:  211, IRON_AXE:  212, DIAMOND_AXE:  213,
   WOOD_SHOVEL:  220, STONE_SHOVEL: 221, IRON_SHOVEL: 222, DIAMOND_SHOVEL: 223,
@@ -45,6 +50,13 @@ const _INFO = {
   [ITEM_ID.IRON_INGOT]: { name:'Lingote Ferro', max:64 },
   [ITEM_ID.GOLD_INGOT]: { name:'Lingote Ouro',  max:64 },
   [ITEM_ID.STICK]:      { name:'Pau',           max:64 },
+  // Comida (food = fome recuperada)
+  [ITEM_ID.RAW_PORKCHOP]:   { name:'Costeleta Crua',  max:64, food:3 },
+  [ITEM_ID.COOKED_PORKCHOP]:{ name:'Costeleta Cozida',max:64, food:8 },
+  [ITEM_ID.RAW_BEEF]:       { name:'Bife Cru',        max:64, food:3 },
+  [ITEM_ID.COOKED_BEEF]:    { name:'Bife Cozido',     max:64, food:8 },
+  [ITEM_ID.RAW_CHICKEN]:    { name:'Frango Cru',      max:64, food:2 },
+  [ITEM_ID.COOKED_CHICKEN]: { name:'Frango Cozido',   max:64, food:6 },
   // Ferramentas
   [ITEM_ID.WOOD_PICK]:    { name:'Picareta Madeira',  max:1, tool:'pickaxe', tier:0 },
   [ITEM_ID.STONE_PICK]:   { name:'Picareta Pedra',    max:1, tool:'pickaxe', tier:1 },
@@ -102,6 +114,12 @@ export const ITEM_COLOR = {
   [ITEM_ID.STONE_SHOVEL]:   '#9a9a9a',
   [ITEM_ID.IRON_SHOVEL]:    '#c0c0c0',
   [ITEM_ID.DIAMOND_SHOVEL]: '#30b8c8',
+  [ITEM_ID.RAW_PORKCHOP]:    '#e88888',
+  [ITEM_ID.COOKED_PORKCHOP]: '#8b4513',
+  [ITEM_ID.RAW_BEEF]:        '#cc5544',
+  [ITEM_ID.COOKED_BEEF]:     '#7a3020',
+  [ITEM_ID.RAW_CHICKEN]:     '#f0c8a0',
+  [ITEM_ID.COOKED_CHICKEN]:  '#c87820',
   [ITEM_ID.WOOD_SWORD]:    '#a07828',
   [ITEM_ID.STONE_SWORD]:   '#9a9a9a',
   [ITEM_ID.IRON_SWORD]:    '#c0c0c0',
@@ -263,6 +281,19 @@ function _sword(c, tier) {
   _r(c, 10, 17, 5, 8, '#8b5a2b');
 }
 
+// Comida — coxa pixelada
+function _meat(c, mr, mg, mb, cooked) {
+  // osso
+  _r(c, 13, 17, 5, 11, '#f0f0e8');
+  _r(c, 11, 15, 4,  4, '#f0f0e8');
+  _r(c, 13, 26, 5,  4, '#f0f0e8');
+  // carne
+  const shade = cooked ? 0.7 : 1;
+  _r(c,  4,  4, 18, 16, `rgb(${(mr*shade)|0},${(mg*shade)|0},${(mb*shade)|0})`);
+  _r(c,  4,  4,  6,  5, `rgba(255,255,255,0.22)`); // highlight
+  _r(c, 16, 14,  6,  6, `rgba(0,0,0,0.25)`);        // sombra
+}
+
 // Blocos: desenha a textura real do bloco (mesmo pixel-art do mundo 3D)
 // Itens não-bloco: shapes geométricas pixeladas
 function _drawItemIcon(c, id) {
@@ -285,6 +316,12 @@ function _drawItemIcon(c, id) {
   else if (id>=210&&id<220)   _axe(c, (id-210)%4);
   else if (id>=220&&id<230)   _shovel(c, (id-220)%4);
   else if (id>=230&&id<240)   _sword(c, (id-230)%4);
+  else if (id===I.RAW_PORKCHOP)    _meat(c, 232,110,110, false);
+  else if (id===I.COOKED_PORKCHOP) _meat(c, 160, 70, 35, true);
+  else if (id===I.RAW_BEEF)        _meat(c, 200, 70, 60, false);
+  else if (id===I.COOKED_BEEF)     _meat(c, 140, 50, 30, true);
+  else if (id===I.RAW_CHICKEN)     _meat(c, 240,200,150, false);
+  else if (id===I.COOKED_CHICKEN)  _meat(c, 210,130, 40, true);
   else { _r(c,4,4,24,24, ITEM_COLOR[id]||'#888'); }
 }
 
