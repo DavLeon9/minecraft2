@@ -38,7 +38,8 @@ function findSurfaceY(x, z) {
   const bx = Math.max(0, Math.min(W - 1, Math.floor(x)));
   const bz = Math.max(0, Math.min(D - 1, Math.floor(z)));
   for (let y = H - 1; y >= 0; y--) {
-    if (worldData[idx(bx, y, bz)] !== BLOCK.AIR) return y + 1;
+    const b = worldData[idx(bx, y, bz)];
+    if (b !== BLOCK.AIR && b !== BLOCK.LEAVES) return y + 1;
   }
   return Math.floor(H / 2);
 }
