@@ -3,7 +3,6 @@
  * Cada mob é um grupo Three.js com geometrias simples (caixas coloridas).
  */
 import * as THREE from 'three';
-import { CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
 // ─── Dados visuais dos mobs ───────────────────────────────────────────────────
 const MOB_CONFIG = {
@@ -82,13 +81,11 @@ class MobMesh {
       this._meshes.push(legMesh);
     });
 
-    // CSS2D label
-    const div = document.createElement('div');
-    div.style.cssText = `color:${cfg.hostile ? '#ff6666' : '#88ff88'};font-size:9px;font-family:monospace;text-shadow:1px 1px 0 #000;white-space:nowrap;pointer-events:none;`;
-    div.textContent = cfg.name;
-    const label = new CSS2DObject(div);
-    label.position.y = lh + bodyH + hs + 0.15;
-    this.group.add(label);
+    // Guardar materiais originais para o flash de dano
+    this._origMats = [];
+    this.group.traverse(obj => {
+      if (obj.isMesh) this._origMats.push({ mesh: obj, mat: obj.material });
+    });
 
     scene.add(this.group);
   }
@@ -101,6 +98,19 @@ class MobMesh {
   animate(dt) {
     this._bobT += dt * 3;
     if (this._headMesh) this._headMesh.rotation.y = Math.sin(this._bobT * 0.4) * 0.25;
+  }
+
+  /** Pisca vermelho por 180ms quando recebe dano */
+  flashDamage() {
+    if (this._flashing) return;
+    this._flashing = true;
+    const redMat = new THREE.MeshLambertMaterial({ color: 0xff2222 });
+    this.group.traverse(obj => { if (obj.isMesh) obj.material = redMat; });
+    setTimeout(() => {
+      this._origMats.forEach(({ mesh, mat }) => { mesh.material = mat; });
+      redMat.dispose();
+      this._flashing = false;
+    }, 180);
   }
 
   dispose() {
@@ -143,6 +153,8 @@ export class MobManager {
     m.dispose();
     this.mobs.delete(mobId);
   }
+
+  flashMob(mobId) { this.mobs.get(mobId)?.flashDamage(); }
 
   animate(dt) { for (const m of this.mobs.values()) m.animate(dt); }
 

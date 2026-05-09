@@ -7,7 +7,7 @@ import { PlayerAvatar }          from './avatar.js';
 import { HandRenderer }          from './handRenderer.js';
 import { Inventory }             from './inventory.js';
 import { PLAYER_EYE_Y, BLOCK }   from './constants.js';
-import { ITEM_ID, getItemInfo, ITEM_COLOR, ITEM_ICON, isBlockItem, getItemIconDataUrl } from './items.js';
+import { ITEM_ID, getItemInfo, ITEM_COLOR, isBlockItem, getItemIconDataUrl } from './items.js';
 import { matchRecipe, consumeIngredients, SMELT_RECIPES, RECIPES } from './crafting.js';
 import { MobManager } from './mobs.js';
 
@@ -78,6 +78,9 @@ export class Game {
 
     // Combate
     this._attackCooldown = 0;    // segundos até poder atacar de novo
+
+    // Items no chão (drops de mobs)
+    this._drops = [];            // [{ id, count, x, y, z, mesh, rotT }]
   }
 
   // ── Inicialização ─────────────────────────────────────────────────────────
@@ -149,6 +152,13 @@ export class Game {
         this.handRenderer,
         (foodVal) => this._onEat(foodVal),
       );
+      this.player.onFallDamage = (dmg) => {
+        if (this._dead) return;
+        this._health = Math.max(0, this._health - dmg);
+        this._renderHealthHunger();
+        this._flashDamage();
+        if (this._health <= 0) this._onDeath('queda');
+      };
       this.player.setSpawn(data.spawnX, data.spawnY, data.spawnZ);
 
       const btnPlay = document.getElementById('btn-play');
@@ -185,16 +195,11 @@ export class Game {
     network.on('mob:init',  (list)  => this.mobManager?.spawnBatch(list));
     network.on('mob:spawn', (data)  => this.mobManager?.spawn(data));
     network.on('mob:batch', (list)  => this.mobManager?.updateBatch(list));
-    network.on('mob:die',   ({id, drops, x, y, z}) => {
+    network.on('mob:hit',  ({ id }) => this.mobManager?.flashMob(id));
+    network.on('mob:die',  ({ id, drops, x, y, z }) => {
       this.mobManager?.die(id);
-      // Adicionar drops ao inventário do jogador mais próximo (só o local)
-      if (drops && this.player) {
-        const px = this.player.position.x, pz = this.player.position.z;
-        const dx = (x ?? 0) - px, dz = (z ?? 0) - pz;
-        if (Math.sqrt(dx*dx + dz*dz) < 8) {
-          drops.forEach(d => this.inventory.addItem(d.id, d.count));
-        }
-      }
+      // Criar itens no chão para recolher
+      if (drops?.length) drops.forEach(d => this._spawnDrop(d.id, d.count, x ?? 0, (y ?? 0) + 0.3, z ?? 0));
     });
 
     // ── Dano ao jogador (de mobs ou PvP) ──────────────────────────────────
@@ -694,6 +699,7 @@ export class Game {
     this._attackCooldown = 0.45;
     this.handRenderer.swing?.();
     if (hit.type === 'mob') {
+      this.mobManager?.flashMob(hit.id); // flash imediato (client-side)
       this.network.socket.emit('mob:attack', { mobId: hit.id, damage: dmg });
     } else if (hit.type === 'player') {
       this.network.socket.emit('pvp:attack', { targetId: hit.id, damage: dmg });
@@ -747,6 +753,42 @@ export class Game {
     line.textContent = msg;
     feed.appendChild(line);
     setTimeout(() => line.remove(), 5000);
+  }
+
+  // ── Drops no chão ────────────────────────────────────────────────────────
+
+  _spawnDrop(id, count, x, y, z) {
+    if (!this.scene) return;
+    const col  = ITEM_COLOR[id] || '#ffcc00';
+    const colHex = typeof col === 'string' && col.startsWith('#')
+      ? parseInt(col.slice(1), 16) : 0xffcc00;
+    const geo  = new THREE.BoxGeometry(0.28, 0.28, 0.28);
+    const mat  = new THREE.MeshLambertMaterial({ color: colHex });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(x, y + 0.14, z);
+    mesh.castShadow = false;
+    this.scene.add(mesh);
+    this._drops.push({ id, count, x, y: y + 0.14, z, mesh, rotT: Math.random() * Math.PI * 2 });
+  }
+
+  _updateDrops(dt) {
+    if (!this._drops.length || !this.player) return;
+    const px = this.player.position.x, py = this.player.position.y, pz = this.player.position.z;
+    for (let i = this._drops.length - 1; i >= 0; i--) {
+      const d = this._drops[i];
+      d.rotT += dt * 2.2;
+      d.mesh.rotation.y = d.rotT;
+      d.mesh.position.y = d.y + Math.sin(d.rotT * 1.4) * 0.08;
+      // Auto-pickup quando próximo
+      const dx = d.x - px, dy = d.y - py, dz = d.z - pz;
+      if (Math.sqrt(dx*dx + dy*dy + dz*dz) < 1.8) {
+        this.inventory.addItem(d.id, d.count);
+        this.scene.remove(d.mesh);
+        d.mesh.geometry.dispose();
+        d.mesh.material.dispose();
+        this._drops.splice(i, 1);
+      }
+    }
   }
 
   // ── Ciclo Dia/Noite ───────────────────────────────────────────────────────
@@ -874,6 +916,7 @@ export class Game {
       this._updateDayNight(dt);
       if (!this._dead) this._updateHealthHunger(dt);
       if (this._attackCooldown > 0) this._attackCooldown -= dt;
+      this._updateDrops(dt);
     }
 
     this._frameCount++;

@@ -85,6 +85,7 @@ function spawnMob(type, x, y, z) {
     hp: d.maxHp, maxHp: d.maxHp,
     rotY: Math.random() * Math.PI * 2,
     velX: 0, velZ: 0,
+    kbX: 0, kbZ: 0,          // knockback impulse
     moveTimer: Math.random() * 3,
     attackTimer: 0,
     targetSid: null,
@@ -116,6 +117,19 @@ function tickMobs(dt) {
     }
 
     let moved = false;
+
+    // Aplicar knockback (decai rapidamente)
+    if (mob.kbX !== 0 || mob.kbZ !== 0) {
+      mob.x += mob.kbX * dt;
+      mob.z += mob.kbZ * dt;
+      mob.kbX *= Math.pow(0.05, dt); // decai em ~0.2s
+      mob.kbZ *= Math.pow(0.05, dt);
+      if (Math.abs(mob.kbX) < 0.05) mob.kbX = 0;
+      if (Math.abs(mob.kbZ) < 0.05) mob.kbZ = 0;
+      mob.x = Math.max(0.5, Math.min(W - 0.5, mob.x));
+      mob.z = Math.max(0.5, Math.min(D - 0.5, mob.z));
+      moved = true;
+    }
 
     if (d.hostile && !day && nearSid && nearDist < (d.aggroR || 16)) {
       // Chase player
@@ -275,14 +289,23 @@ io.on('connection', (socket) => {
     const p   = players.get(socket.id);
     if (!mob || !p) return;
     const dx = mob.x - p.x, dz = mob.z - p.z;
-    if (Math.sqrt(dx*dx + dz*dz) > 7) return; // cheat guard
+    const dist = Math.sqrt(dx*dx + dz*dz);
+    if (dist > 7) return; // cheat guard
     const dmg = Math.max(1, Math.min(9, damage | 0));
     mob.hp -= dmg;
+
+    // Knockback: empurra o mob para longe do jogador
+    const len = dist || 1;
+    mob.kbX = (dx / len) * 7;
+    mob.kbZ = (dz / len) * 7;
+
     if (mob.hp <= 0) {
       const d = MOB_DATA[mob.type];
       io.emit('mob:die', { id: mobId, drops: d.drops || [], x: mob.x, y: mob.y, z: mob.z });
       io.emit('chat:kill', { player: nick, killedBy: d.name, type: 'mob_kill' });
       mobs.delete(mobId);
+    } else {
+      io.emit('mob:hit', { id: mobId }); // clientes piscam o mob a vermelho
     }
   });
 

@@ -41,7 +41,9 @@ export class PlayerController {
     this.hand        = hand;
     this.onEat       = onEat; // callback(foodValue) when player eats
 
-    this._suppressBreak = false; // set by Game when entity takes attack priority
+    this._suppressBreak  = false; // set by Game when entity takes attack priority
+    this._maxFallVel     = 0;    // tracks peak downward speed for fall damage
+    this.onFallDamage    = null; // callback(dmg)
 
     this.controls = new PointerLockControls(camera, document.body);
     scene.add(this.controls.getObject());
@@ -155,11 +157,27 @@ export class PlayerController {
     const pos = this.position;
     pos.x += this.vel.x*dt;
     if (this._collides()) { pos.x -= this.vel.x*dt; this.vel.x=0; }
+
+    // Rastrear velocidade máxima de queda (para dano de queda)
+    if (this.vel.y < 0) this._maxFallVel = Math.min(this._maxFallVel, this.vel.y);
+
     pos.y += this.vel.y*dt;
     if (this._collides()) {
-      if (this.vel.y<0) this.onGround=true;
+      if (this.vel.y < 0) {
+        this.onGround = true;
+        // Dano de queda: GRAVITY=22, ~3 blocos seguros → speed ≈ 11.5
+        const spd = Math.abs(this._maxFallVel);
+        if (spd > 12) {
+          const dmg = Math.ceil((spd - 12) * 1.2);
+          if (dmg > 0) this.onFallDamage?.(dmg);
+        }
+        this._maxFallVel = 0;
+      }
       pos.y -= this.vel.y*dt; this.vel.y=0;
-    } else if (this.vel.y!==0) this.onGround=false;
+    } else if (this.vel.y !== 0) {
+      this.onGround = false;
+    }
+
     pos.z += this.vel.z*dt;
     if (this._collides()) { pos.z -= this.vel.z*dt; this.vel.z=0; }
   }
