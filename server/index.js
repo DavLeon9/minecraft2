@@ -268,6 +268,7 @@ io.on('connection', (socket) => {
   socket.on('block:break', ({ x, y, z }) => {
     x=x|0; y=y|0; z=z|0;
     if (!inBounds(x, y, z)) return;
+    if (worldData[idx(x, y, z)] === BLOCK.BEDROCK) return; // indestrutível
     worldData[idx(x, y, z)] = BLOCK.AIR;
     db.saveBlock(x, y, z, BLOCK.AIR);
     io.emit('block:update', { x, y, z, type: BLOCK.AIR });

@@ -19,6 +19,7 @@ export const BLOCK = Object.freeze({
   CRAFTING_TABLE: 11,
   FURNACE:        12,
   COBBLESTONE:    13,  // drop da pedra
+  BEDROCK:        14,  // indestrutível — base do mundo
 });
 
 // ─── Física do jogador ────────────────────────────────────────────────────────

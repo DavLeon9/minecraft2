@@ -73,6 +73,20 @@ function leaves(c){
   for(let y=0;y<16;y++) for(let x=0;x<16;x++)
     Math.random()<0.08?px(c,x,y,n(22,5),n(42,8),n(16,5)):px(c,x,y,n(Math.random()<.15?70:44,14),n(Math.random()<.15?148:106,18),n(30,12));
 }
+function bedrock(c){
+  // Base quase preta com manchas irregulares cinzentas
+  for(let y=0;y<16;y++) for(let x=0;x<16;x++){
+    const v = n(28, 8); px(c, x, y, v, v, v);
+  }
+  // Manchas cinzentas grandes (padrão Bedrock)
+  const spots=[[2,1,3,2],[7,0,4,3],[12,2,2,3],[0,5,3,3],[5,4,4,2],[10,5,3,4],
+               [1,9,4,3],[6,8,3,3],[11,9,3,2],[3,13,3,2],[8,12,4,3],[13,13,2,2]];
+  for(const [sx,sy,sw,sh] of spots){
+    const gv=n(68,14);
+    for(let dy=0;dy<sh;dy++) for(let dx=0;dx<sw;dx++)
+      if(sx+dx<16&&sy+dy<16) px(c,sx+dx,sy+dy,n(gv,10),n(gv,10),n(gv,10));
+  }
+}
 
 // ── Ores — base de pedra com spots coloridos ──────────────────────────────────
 function oreBase(c, sr, sg, sb, count=8) {
@@ -147,6 +161,7 @@ function getMaterial(type) {
       _cache[type]=[sd,sd,top,top,front,sd]; break;  // +Z face = frontal
       break;
     }
+    case BLOCK.BEDROCK: _cache[type]=m(makeTex(bedrock)); break;
     default: _cache[type]=new THREE.MeshLambertMaterial({color:0xff00ff}); break;
   }
   return _cache[type];
@@ -168,6 +183,7 @@ export function getBlockFaceCanvas(blockType) {
     [BLOCK.DIAMOND_ORE]:    diamondOre,
     [BLOCK.CRAFTING_TABLE]: craftingTop,
     [BLOCK.FURNACE]:        furnaceFront,
+    [BLOCK.BEDROCK]:        bedrock,
   };
   const drawer = map[blockType];
   if (!drawer) return null;

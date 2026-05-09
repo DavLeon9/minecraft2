@@ -2,7 +2,7 @@
 const BLOCK = {
   AIR: 0, GRASS: 1, DIRT: 2, STONE: 3, WOOD: 4, LOG: 5, LEAVES: 6,
   COAL_ORE: 7, IRON_ORE: 8, GOLD_ORE: 9, DIAMOND_ORE: 10,
-  CRAFTING_TABLE: 11, FURNACE: 12, COBBLESTONE: 13,
+  CRAFTING_TABLE: 11, FURNACE: 12, COBBLESTONE: 13, BEDROCK: 14,
 };
 
 // ─── Biome system ─────────────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ function generateWorld(W, D, H) {
     for (let z = 0; z < D; z++) {
       const surf = getHeight(x, z, H);
       for (let y = 0; y < H; y++) {
-        if      (y === 0)        data[idx(x, y, z)] = BLOCK.STONE;   // bedrock-like
+        if      (y <= 1)         data[idx(x, y, z)] = BLOCK.BEDROCK;  // camada indestrutível
         else if (y < surf - 4)  data[idx(x, y, z)] = BLOCK.STONE;
         else if (y < surf)      data[idx(x, y, z)] = BLOCK.DIRT;
         else if (y === surf)    data[idx(x, y, z)] = BLOCK.GRASS;
@@ -98,7 +98,7 @@ function generateWorld(W, D, H) {
   for (let x = 0; x < W; x++) {
     for (let z = 0; z < D; z++) {
       const surf = getHeight(x, z, H);
-      for (let y = 1; y < surf - 4; y++) {
+      for (let y = 2; y < surf - 4; y++) {
         if (data[idx(x, y, z)] !== BLOCK.STONE) continue;
         const h = hash(x * 31 + y, z * 17 + y * 7);
 

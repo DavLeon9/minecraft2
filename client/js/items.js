@@ -95,6 +95,7 @@ export const ITEM_COLOR = {
   [BLOCK.CRAFTING_TABLE]:'#8b5a2b',
   [BLOCK.FURNACE]:     '#555',
   [BLOCK.COBBLESTONE]: '#888',
+  [BLOCK.BEDROCK]:     '#1e1e1e',
   [ITEM_ID.COAL]:      '#111',
   [ITEM_ID.RAW_IRON]:  '#c07840',
   [ITEM_ID.RAW_GOLD]:  '#c8a800',
@@ -159,6 +160,7 @@ export function canMine(blockType, heldId) {
 
 /** Tempo (s) para minerar o bloco com o item dado. Infinity se não pode. */
 export function getBreakTime(blockType, heldId) {
+  if (blockType === BLOCK.BEDROCK) return Infinity; // indestrutível
   const BASE = {
     [BLOCK.GRASS]:0.7, [BLOCK.DIRT]:0.7, [BLOCK.LOG]:1.2, [BLOCK.WOOD]:0.9, [BLOCK.LEAVES]:0.3,
     [BLOCK.STONE]:7.5, [BLOCK.COBBLESTONE]:7.5, [BLOCK.CRAFTING_TABLE]:1.5,

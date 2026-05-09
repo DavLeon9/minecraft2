@@ -252,6 +252,10 @@ export class Game {
       if (e.code === 'Escape' && this._invOpen) {
         this._closeInventory();
       }
+      // Q — dropa 1 item da mão
+      if (e.code === 'KeyQ' && !this._invOpen && this.player?.controls.isLocked && !this._dead) {
+        this._dropHeldItem();
+      }
     });
 
     // Click ESQUERDO: pegar stack inteira / colocar stack inteira / trocar
@@ -757,7 +761,28 @@ export class Game {
 
   // ── Drops no chão ────────────────────────────────────────────────────────
 
-  _spawnDrop(id, count, x, y, z) {
+  /** Dropa 1 item da mão (tecla Q) à frente do jogador */
+  _dropHeldItem() {
+    if (!this.player) return;
+    const slot = this.player.selectedSlot;
+    const item  = this.inventory.getHotbar(slot);
+    if (!item) return;
+
+    // Posição: ligeiramente à frente e no nível dos olhos
+    const pos = this.player.position.clone();
+    const dir = new THREE.Vector3();
+    this.camera.getWorldDirection(dir);
+    dir.y = 0;
+    if (dir.lengthSq() > 0.0001) dir.normalize();
+    const dropX = pos.x + dir.x * 0.8;
+    const dropY = pos.y - 0.4;   // perto do nível dos pés
+    const dropZ = pos.z + dir.z * 0.8;
+
+    this.inventory.removeFromSlot(slot, 1);
+    this._spawnDrop(item.id, 1, dropX, dropY, dropZ, 1.0); // 1s antes de poder recolher
+  }
+
+  _spawnDrop(id, count, x, y, z, pickupDelay = 0) {
     if (!this.scene) return;
     const col  = ITEM_COLOR[id] || '#ffcc00';
     const colHex = typeof col === 'string' && col.startsWith('#')
@@ -768,7 +793,7 @@ export class Game {
     mesh.position.set(x, y + 0.14, z);
     mesh.castShadow = false;
     this.scene.add(mesh);
-    this._drops.push({ id, count, x, y: y + 0.14, z, mesh, rotT: Math.random() * Math.PI * 2 });
+    this._drops.push({ id, count, x, y: y + 0.14, z, mesh, rotT: Math.random() * Math.PI * 2, pickupDelay });
   }
 
   _updateDrops(dt) {
@@ -776,17 +801,20 @@ export class Game {
     const px = this.player.position.x, py = this.player.position.y, pz = this.player.position.z;
     for (let i = this._drops.length - 1; i >= 0; i--) {
       const d = this._drops[i];
+      if (d.pickupDelay > 0) d.pickupDelay -= dt;
       d.rotT += dt * 2.2;
       d.mesh.rotation.y = d.rotT;
       d.mesh.position.y = d.y + Math.sin(d.rotT * 1.4) * 0.08;
-      // Auto-pickup quando próximo
-      const dx = d.x - px, dy = d.y - py, dz = d.z - pz;
-      if (Math.sqrt(dx*dx + dy*dy + dz*dz) < 1.8) {
-        this.inventory.addItem(d.id, d.count);
-        this.scene.remove(d.mesh);
-        d.mesh.geometry.dispose();
-        d.mesh.material.dispose();
-        this._drops.splice(i, 1);
+      // Auto-pickup quando próximo (e sem delay)
+      if (d.pickupDelay <= 0) {
+        const dx = d.x - px, dy = d.y - py, dz = d.z - pz;
+        if (Math.sqrt(dx*dx + dy*dy + dz*dz) < 1.8) {
+          this.inventory.addItem(d.id, d.count);
+          this.scene.remove(d.mesh);
+          d.mesh.geometry.dispose();
+          d.mesh.material.dispose();
+          this._drops.splice(i, 1);
+        }
       }
     }
   }
@@ -914,7 +942,12 @@ export class Game {
       this.handRenderer.animate(dt);
       this.mobManager?.animate(dt);
       this._updateDayNight(dt);
-      if (!this._dead) this._updateHealthHunger(dt);
+      if (!this._dead) {
+        this._updateHealthHunger(dt);
+        // Void: pés abaixo de y=-5 (5 blocos abaixo do bedrock)
+        const feetY = this.player.position.y - 1.6;
+        if (feetY < -5) this._onDeath('void');
+      }
       if (this._attackCooldown > 0) this._attackCooldown -= dt;
       this._updateDrops(dt);
     }
