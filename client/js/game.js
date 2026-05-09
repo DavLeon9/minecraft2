@@ -191,11 +191,19 @@ export class Game {
       this.world.setBlock(x,y,z,type); this.worldRenderer?.rebuild();
     });
 
+    // Batch de blocos destruídos (explosão do Creeper)
+    network.on('block:updates', (changes) => {
+      for (const { x, y, z, type } of changes) this.world.setBlock(x, y, z, type);
+      this.worldRenderer?.rebuild();
+    });
+
     // ── Mobs ────────────────────────────────────────────────────────────────
     network.on('mob:init',  (list)  => this.mobManager?.spawnBatch(list));
     network.on('mob:spawn', (data)  => this.mobManager?.spawn(data));
     network.on('mob:batch', (list)  => this.mobManager?.updateBatch(list));
     network.on('mob:hit',  ({ id }) => this.mobManager?.flashMob(id));
+    network.on('creeper:fuse',    ({ id, active }) => this.mobManager?.fuseMob(id, active));
+    network.on('creeper:explode', ({ x, y, z })   => this._onCreeperExplode(x, y, z));
     network.on('mob:die',  ({ id, drops, x, y, z }) => {
       this.mobManager?.die(id);
       // Criar itens no chão para recolher
@@ -716,6 +724,30 @@ export class Game {
     overlay.style.opacity = '0.45';
     clearTimeout(this._flashTimer);
     this._flashTimer = setTimeout(() => { overlay.style.opacity = '0'; }, 300);
+  }
+
+  /** Flash branco de explosão + reconstrução do mundo */
+  _onCreeperExplode(x, y, z) {
+    // Flash branco intenso no ecrã (se perto do jogador)
+    if (this.player) {
+      const pos = this.player.position;
+      const dx = pos.x - x, dy = pos.y - y, dz = pos.z - z;
+      const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+      if (dist < 12) {
+        const overlay = document.getElementById('damage-flash');
+        if (overlay) {
+          const intensity = Math.max(0.15, 0.9 - dist * 0.07);
+          overlay.style.background = 'radial-gradient(ellipse at center, rgba(255,255,200,0.95) 0%, rgba(255,220,100,0.6) 60%, transparent 100%)';
+          overlay.style.opacity = String(intensity);
+          clearTimeout(this._explodeFlashTimer);
+          this._explodeFlashTimer = setTimeout(() => {
+            overlay.style.opacity = '0';
+            overlay.style.background = '';  // repõe o gradiente vermelho original
+          }, 500);
+        }
+      }
+    }
+    // O worldRenderer.rebuild() já é chamado pelo handler 'block:updates'
   }
 
   _onDeath(killedByName) {

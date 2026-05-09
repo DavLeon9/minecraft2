@@ -306,6 +306,9 @@ class MobMesh {
     this._head   = null;
     this._legL   = null;
     this._legR   = null;
+    this._fusing   = false;   // Creeper fuse
+    this._fuseT    = 0;
+    this._whiteMat = new THREE.MeshLambertMaterial({ color: 0xffffff });
 
     switch (type) {
       case 1: { // Zombie
@@ -366,6 +369,31 @@ class MobMesh {
     }
     // Bob vertical suave do grupo inteiro
     this.group.position.y += Math.sin(t * 1.8) * 0.003;
+
+    // Creeper fuse: pisca branco em frequência crescente
+    if (this._fusing && !this._flashing) {
+      this._fuseT += dt;
+      // Frequência acelera ao longo do tempo (4 Hz → 14 Hz)
+      const freq = 4 + this._fuseT * 7;
+      const on = Math.sin(this._fuseT * freq * Math.PI) > 0;
+      this.group.traverse(obj => {
+        if (!obj.isMesh) return;
+        obj.material = on ? this._whiteMat : (this._origMats.find(o => o.mesh === obj)?.mat || obj.material);
+      });
+    }
+  }
+
+  /** Inicia/para piscar branco (mecha do Creeper). */
+  startFuse() {
+    this._fusing = true;
+    this._fuseT  = 0;
+  }
+
+  stopFuse() {
+    this._fusing = false;
+    this._fuseT  = 0;
+    // Restaura materiais originais
+    this._origMats.forEach(({ mesh, mat }) => { mesh.material = mat; });
   }
 
   /** Pisca vermelho por 180ms quando recebe dano. */
@@ -382,6 +410,8 @@ class MobMesh {
   }
 
   dispose() {
+    this._fusing = false;
+    this._whiteMat.dispose();
     this.scene.remove(this.group);
     this.group.traverse(obj => {
       if (obj.geometry) obj.geometry.dispose();
@@ -420,6 +450,12 @@ export class MobManager {
   }
 
   flashMob(mobId) { this.mobs.get(mobId)?.flashDamage(); }
+
+  fuseMob(mobId, active) {
+    const m = this.mobs.get(mobId);
+    if (!m) return;
+    if (active) m.startFuse(); else m.stopFuse();
+  }
 
   animate(dt) { for (const m of this.mobs.values()) m.animate(dt); }
 

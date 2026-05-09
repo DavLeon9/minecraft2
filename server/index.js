@@ -90,10 +90,63 @@ function spawnMob(type, x, y, z) {
     moveTimer: Math.random() * 3,
     attackTimer: 0,
     targetSid: null,
+    fuseTimer: 0,             // Creeper: tempo de mecha
   };
   mobs.set(id, mob);
   io.emit('mob:spawn', { id, type, x, y, z, rotY: mob.rotY });
   return mob;
+}
+
+function explodeCreeper(mob) {
+  const cx = mob.x, cy = mob.y + 0.9, cz = mob.z;
+  const radius = 4;
+
+  // Remove creeper
+  mobs.delete(mob.id);
+  io.emit('mob:die', { id: mob.id, drops: [], x: mob.x, y: mob.y, z: mob.z });
+  io.emit('creeper:explode', { x: cx, y: cy, z: cz, radius });
+
+  // Dano aos jogadores (escala com distância)
+  for (const [sid, p] of players) {
+    const dx = p.x - cx, dy = p.y - cy, dz = p.z - cz;
+    const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+    if (dist < radius + 1) {
+      const dmg = Math.max(1, Math.ceil(12 * (1 - dist / (radius + 1))));
+      const sock = io.sockets.sockets.get(sid);
+      if (sock) sock.emit('player:damage', { amount: dmg, sourceName: 'Creeper' });
+    }
+  }
+
+  // Dano a outros mobs
+  for (const [mid, other] of [...mobs]) {
+    const dx = other.x - cx, dy = other.y - cy, dz = other.z - cz;
+    const dist = Math.sqrt(dx*dx + dy*dy + dz*dz);
+    if (dist < radius) {
+      other.hp -= Math.ceil(8 * (1 - dist / radius));
+      if (other.hp <= 0) {
+        io.emit('mob:die', { id: mid, drops: MOB_DATA[other.type]?.drops || [], x: other.x, y: other.y, z: other.z });
+        mobs.delete(mid);
+      }
+    }
+  }
+
+  // Destruir blocos em esfera (ignora bedrock e ar)
+  const blockChanges = [];
+  for (let bx = Math.floor(cx - radius); bx <= Math.ceil(cx + radius); bx++) {
+    for (let by = Math.floor(cy - radius); by <= Math.ceil(cy + radius); by++) {
+      for (let bz = Math.floor(cz - radius); bz <= Math.ceil(cz + radius); bz++) {
+        if (!inBounds(bx, by, bz)) continue;
+        const ddx = bx + 0.5 - cx, ddy = by + 0.5 - cy, ddz = bz + 0.5 - cz;
+        if (Math.sqrt(ddx*ddx + ddy*ddy + ddz*ddz) > radius) continue;
+        const i = idx(bx, by, bz);
+        if (worldData[i] === BLOCK.AIR || worldData[i] === BLOCK.BEDROCK) continue;
+        worldData[i] = BLOCK.AIR;
+        db.saveBlock(bx, by, bz, BLOCK.AIR);
+        blockChanges.push({ x: bx, y: by, z: bz, type: BLOCK.AIR });
+      }
+    }
+  }
+  if (blockChanges.length) io.emit('block:updates', blockChanges);
 }
 
 function tickMobs(dt) {
@@ -103,8 +156,8 @@ function tickMobs(dt) {
   for (const [id, mob] of mobs) {
     const d = MOB_DATA[mob.type];
 
-    // Hostile mobs burn in daylight (2 HP/s)
-    if (d.hostile && day) {
+    // Hostile mobs (exceto Creeper) burn in daylight (2 HP/s)
+    if (d.hostile && day && mob.type !== 4) {
       mob.hp -= dt * 2;
       if (mob.hp <= 0) { io.emit('mob:die', { id, drops:[], x:mob.x, y:mob.y, z:mob.z }); mobs.delete(id); continue; }
     }
@@ -132,26 +185,48 @@ function tickMobs(dt) {
       moved = true;
     }
 
-    if (d.hostile && !day && nearSid && nearDist < (d.aggroR || 16)) {
-      // Chase player
+    if (d.hostile && nearSid && nearDist < (d.aggroR || 16) && (!day || mob.type === 4)) {
       const dx = nearX - mob.x, dz = nearZ - mob.z;
       mob.rotY = Math.atan2(dx, dz);
-      if (nearDist > (d.atkR || 2.0)) {
-        mob.x += (dx / nearDist) * d.speed * dt;
-        mob.z += (dz / nearDist) * d.speed * dt;
-        mob.x  = Math.max(0.5, Math.min(W - 0.5, mob.x));
-        mob.z  = Math.max(0.5, Math.min(D - 0.5, mob.z));
-        moved  = true;
-      }
-      // Attack
-      mob.attackTimer += dt;
-      if (nearDist < (d.atkR || 2.0) && mob.attackTimer >= (d.atkI || 1.5)) {
-        mob.attackTimer = 0;
-        const sock = io.sockets.sockets.get(nearSid);
-        if (sock) sock.emit('player:damage', { amount: d.damage, sourceName: d.name, sourceType: mob.type });
+
+      if (mob.type === 4) {
+        // ── Creeper: mecha em vez de ataque normal ────────────────────────
+        if (nearDist > (d.atkR || 2.5)) {
+          // Perseguir mas apagar mecha se estava acesa
+          mob.x += (dx / nearDist) * d.speed * dt;
+          mob.z += (dz / nearDist) * d.speed * dt;
+          mob.x  = Math.max(0.5, Math.min(W - 0.5, mob.x));
+          mob.z  = Math.max(0.5, Math.min(D - 0.5, mob.z));
+          moved  = true;
+          if (mob.fuseTimer > 0) { mob.fuseTimer = 0; io.emit('creeper:fuse', { id, active: false }); }
+        } else {
+          // Perto — acende mecha
+          if (mob.fuseTimer === 0) io.emit('creeper:fuse', { id, active: true });
+          mob.fuseTimer += dt;
+          if (mob.fuseTimer >= 1.5) { explodeCreeper(mob); continue; }
+        }
+      } else {
+        // ── Hosties normais: perseguição + ataque ─────────────────────────
+        if (nearDist > (d.atkR || 2.0)) {
+          mob.x += (dx / nearDist) * d.speed * dt;
+          mob.z += (dz / nearDist) * d.speed * dt;
+          mob.x  = Math.max(0.5, Math.min(W - 0.5, mob.x));
+          mob.z  = Math.max(0.5, Math.min(D - 0.5, mob.z));
+          moved  = true;
+        }
+        mob.attackTimer += dt;
+        if (nearDist < (d.atkR || 2.0) && mob.attackTimer >= (d.atkI || 1.5)) {
+          mob.attackTimer = 0;
+          const sock = io.sockets.sockets.get(nearSid);
+          if (sock) sock.emit('player:damage', { amount: d.damage, sourceName: d.name, sourceType: mob.type });
+        }
       }
     } else {
-      // Wander
+      // Wander (passivos + hostis sem alvo)
+      if (mob.type === 4 && mob.fuseTimer > 0) {
+        mob.fuseTimer = 0;
+        io.emit('creeper:fuse', { id, active: false });
+      }
       mob.moveTimer -= dt;
       if (mob.moveTimer <= 0) {
         mob.moveTimer = 2 + Math.random() * 3;
